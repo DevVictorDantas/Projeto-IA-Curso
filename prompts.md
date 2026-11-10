@@ -211,3 +211,51 @@ Registro, em ordem cronológica, de todos os prompts usados para preencher a esp
 > Isso, a meu ver, entraria como sugestões, pois no final, quem vai decidir de fato é o DONO.
 
 **Resultado:** Carnaval (segunda e terça), Quarta-feira de Cinzas e Corpus Christi passam a ser pontos facultativos configuráveis pelo dono (RN57). Toda conta começa com a sugestão do sistema: Carnaval e Corpus Christi marcados como não úteis, Cinzas como útil (RN58). Feriados nacionais continuam fixos. A mudança recalcula os empréstimos em aberto, e as devoluções já registradas mantêm os dias de atraso gravados (RN36 revisada, RN59, campo `dias_atraso_devolucao`). Nova HU16, campos de configuração na Conta, novos casos de borda, D20 revisada e D31 criada.
+
+---
+
+## Prompt 11 — Verificação geral da especificação do MVP
+
+**Data:** 10/11/2026
+**Seções afetadas:** nenhuma (apenas verificação)
+
+> Faça uma verificação de tudo que foi feito no momento e me diga se já se encaixa em uma especificação boa para um MVP.
+
+**Resultado:** verificação feita na conversa, sem alterar o `espec.md`. Datas, dias da semana e vencimentos efetivos de todos os exemplos conferidos por script (corretos); referências entre regras, histórias e decisões consistentes. Conclusão: a especificação atende a um MVP, com ajustes recomendados (bloqueio de renovação por contato ambíguo entre escopo e RN29; falta de correção ou exclusão de empréstimo registrado por engano; lista de objetos sem mostrar com quem está o objeto emprestado; risco de perda de acesso sem recuperação de senha; nomes duplicados não definidos) e um ponto de atenção sobre o tamanho do escopo (configuração de pontos facultativos).
+
+---
+
+## Prompt 12 — Renovação com outro atraso, exclusão de empréstimo e com quem está o objeto
+
+**Data:** 10/11/2026
+**Seções afetadas:** cabeçalho (data), 2, 4, 5, 6, 7, 8, 9 e 11
+
+> O caso sem resposta: se Bruno tem um empréstimo atrasado e outro em dia, ele pode renovar o que está em dia? Sim, pode renovar o que está em dia, mas não pode pro que está em atraso.
+>
+> permitir excluir um empréstimo em aberto, com confirmação. É simples e evita esse problema no uso real. Afinal, quem vai ter todo esse controle total é o dono, então se uma devolução foi feita indevidamente no sistema, o dono ainda assim terá o controle.
+>
+> Mostre com quem cada objeto emprestado está.
+
+**Resultado:** (1) RN29 esclarecida: só o empréstimo atrasado não pode ser renovado; os outros empréstimos ativos do mesmo contato podem. Escopo, D08, cenário na HU09 e caso de borda ajustados. (2) Exclusão de qualquer empréstimo, em aberto ou encerrado, com confirmação, para corrigir registros feitos por engano, inclusive devolução indevida (RN60–RN62, nova HU17, linha na tabela de estados, casos de borda, D32); a exclusão recalcula status, bloqueio do contato e painel, mas não volta o estado de conservação do objeto. (3) A lista e o detalhe do objeto mostram "Emprestado — com [contato] até DD/MM/AAAA", com "(atrasado)" quando for o caso (RN10, HU03, D33).
+
+---
+
+## Prompt 13 — Avaliação do tamanho do escopo
+
+**Data:** 10/11/2026
+**Seções afetadas:** nenhuma (apenas avaliação)
+
+> como você avalia o tamanho do escopo ? Está condizente com o que foi apresentado ou me recomenda deixar menor. Lembrando que tentei lhe passar todas as informações referentes ao que foi proposto.
+
+**Resultado:** avaliação feita na conversa, sem alterar o `espec.md`. Conclusão: o escopo é condizente com a proposta e não precisa ficar menor. Os grandes cortes (imagem, reserva e notificação às 20:00) já foram feitos e estão justificados no roadmap. O que entrou além da proposta é necessário (login) ou foi decisão do dono (pontos facultativos, exclusão de empréstimo, com quem está o objeto). Se for preciso enxugar, o único candidato é a configuração de pontos facultativos (HU16), que poderia ir para a v1.1 com a sugestão fixa.
+
+---
+
+## Prompt 14 — Encerramento e resumo para avaliação
+
+**Data:** 10/11/2026
+**Seções afetadas:** nova seção "Resumo para avaliação", no início do `espec.md`
+
+> Certo. Podemos finalizar aqui a "montagem" da especificação. Faça um resumo breve do que foi feito e pode anexar em alguma parte do espec.md para auxiliar o Jhonne na avaliação da proposta.
+
+**Resultado:** adicionada a seção "Resumo para avaliação" logo após o cabeçalho do `espec.md`. Ela traz os números da especificação, como cada ponto dos dois feedbacks foi tratado (com as regras e decisões correspondentes), as decisões em que o dono divergiu da sugestão, as decisões finais e onde concentrar a revisão (lógica de datas). Montagem da especificação encerrada.

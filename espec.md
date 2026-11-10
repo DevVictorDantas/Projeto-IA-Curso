@@ -1,6 +1,36 @@
 # Empresta Aí — Especificação do MVP (v1.0)
 
-Aluno: Victor de Sá Dantas | Data: 05/11/2026
+Aluno: Victor de Sá Dantas | Data: 10/11/2026
+
+## Resumo para avaliação
+
+**O que é:** especificação, sem código, do MVP do Empresta Aí, um sistema web para o dono controlar os objetos que empresta. Tem 17 histórias de usuário (HU01–HU17), 62 regras de negócio (RN01–RN62), 33 decisões (D01–D33) e nenhuma questão em aberto. Todos os prompts usados estão em [prompts.md](prompts.md) (Prompts 01–14).
+
+**Como foi construída:** as funcionalidades vieram dos Prompts 02 a 04. Depois vieram os dois feedbacks (Prompts 05 e 07), o corte para MVP (Prompt 08) e os ajustes finais do dono (Prompts 09 a 12).
+
+**Primeiro feedback (pontos a corrigir):**
+
+| Ponto | Como ficou |
+| --- | --- |
+| 1. RN19 dependia da reserva, que não estava especificada | A reserva chegou a ser especificada (Prompt 05), mas saiu do MVP e foi para a v2.0, junto com a renovação condicionada a ela (D29, seção 2.3) |
+| 2. D15 contradizia a RN48 (alerta às 20:00 sem notificação) | A notificação foi para a v1.1; no MVP, avisos e atrasos ficam no painel da tela inicial (RN44–RN49, D14). Plataforma definida: web, uso principal no PC (D26) |
+| 3. LGPD incompleta nos textos livres | Ao excluir o contato, observação, justificativa e motivo são apagados (RN55, D15) |
+| 4. Empréstimo retroativo sobreposto | A data do empréstimo não pode ser anterior à última devolução do objeto (RN16, D24) |
+| 5. 23:59 x 23:59:59 e "hoje" sem fuso | Tudo em 23:59, atraso a partir das 00:00 (RN24); "hoje" no horário de Brasília (RN22) |
+
+**Segundo feedback (sugestão de MVP):** adotados o corte de imagem, reserva e notificação (D14, D28, D29), o painel na tela inicial, o login (HU01, RN01–RN04, D27), os feriados calculados automaticamente (RN25), o objeto "Extraviado" definitivo (D30), o requisito de testabilidade (seção 10) e o roadmap (seção 2.3). Pontos em que o dono decidiu diferente:
+
+- Uso principal no computador, em vez de web responsiva (D26).
+- Textos livres apagados na exclusão do contato, em vez de só avisar (D15).
+- Carnaval, Quarta-feira de Cinzas e Corpus Christi são sugestões que o dono marca ou desmarca (RN57–RN59, D20, D31).
+
+**Decisões finais do dono:**
+
+- Só o empréstimo atrasado não pode ser renovado (RN29, D08).
+- O dono pode excluir qualquer empréstimo registrado por engano (RN60–RN62, HU17, D32).
+- A lista de objetos mostra com quem cada objeto está (RN10, D33).
+
+**Onde olhar primeiro:** o risco principal está na lógica de datas. Ela está nas RN22–RN28 e na RN59, nos exemplos de vencimento efetivo da seção 7 e nos casos de borda da seção 9. Todos os exemplos com datas foram conferidos por script contra o calendário de 2026.
 
 ## 1. Visão
 
@@ -13,13 +43,14 @@ Proposta de valor do MVP: ao abrir o sistema, o dono sabe onde está cada objeto
 ### 2.1 Dentro do escopo do MVP
 
 - Criação de conta, entrada e saída do dono, com e-mail e senha.
-- Cadastro, consulta, edição e exclusão (CRUD) de objetos: nome, categoria e estado de conservação.
+- Cadastro, consulta, edição e exclusão (CRUD) de objetos: nome, categoria e estado de conservação. Objeto emprestado mostra com quem está e até quando.
 - Cadastro, consulta, edição e exclusão de contatos (amigos para quem os objetos são emprestados).
 - Registro de empréstimo: objeto, contato, data do empréstimo, prazo em dias e observação opcional, com a data limite exibida junto com os dias faltantes.
 - Vencimento às 23:59 do horário de Brasília, com tolerância de fim de semana, feriado nacional e pontos facultativos escolhidos pelo dono antes de considerar atraso.
 - Configuração, pelo dono, de quais pontos facultativos (Carnaval, Quarta-feira de Cinzas e Corpus Christi) contam como dias não úteis, a partir de uma sugestão do sistema.
 - Renovação de empréstimo vigente.
-- Bloqueio de renovação e de novos empréstimos para contato com empréstimo atrasado.
+- Bloqueio da renovação do empréstimo atrasado e de novos empréstimos para o contato que tem empréstimo atrasado; os outros empréstimos em dia desse contato continuam renováveis.
+- Exclusão, com confirmação, de empréstimo registrado por engano, em aberto ou encerrado.
 - Registro de devolução, com data e estado de conservação no retorno, inclusive devolução antecipada por necessidade do dono.
 - Registro de perda ou não devolução, com a data em que o objeto deveria ter sido devolvido e o motivo.
 - Lista de empréstimos com filtro por situação: vigente, atrasado e encerrado.
@@ -79,7 +110,7 @@ Proposta de valor do MVP: ao abrir o sistema, o dono sabe onde está cada objeto
 | Ator | Pode fazer | Não pode fazer |
 | --- | --- | --- |
 | Visitante (sem login) | Criar conta e entrar | Ver ou alterar qualquer dado (RN01) |
-| Dono (com login) | Gerenciar objetos, contatos, empréstimos, renovações, devoluções e registros de não devolução da própria conta; ver o painel e os históricos; escolher os pontos facultativos (RN57); sair | Ver dados de outra conta (RN03); excluir objeto ou contato com empréstimo em aberto (RN09, RN11); renovar empréstimo atrasado (RN29); emprestar objeto extraviado (RN41); emprestar para contato com empréstimo atrasado (RN20); registrar empréstimo retroativo sobreposto a um empréstimo anterior (RN16) |
+| Dono (com login) | Gerenciar objetos, contatos, empréstimos, renovações, devoluções e registros de não devolução da própria conta; ver o painel e os históricos; escolher os pontos facultativos (RN57); excluir empréstimo registrado por engano (RN60); sair | Ver dados de outra conta (RN03); excluir objeto ou contato com empréstimo em aberto (RN09, RN11); renovar empréstimo atrasado (RN29); emprestar objeto extraviado (RN41); emprestar para contato com empréstimo atrasado (RN20); registrar empréstimo retroativo sobreposto a um empréstimo anterior (RN16) |
 | Contato | Nada no sistema; aparece apenas como dado cadastrado pelo dono | Acessar, visualizar ou alterar qualquer informação; receber avisos |
 
 ## 5. Regras de negócio
@@ -100,7 +131,7 @@ Cada regra numerada, atômica e testável.
 - RN07 — A categoria é obrigatória e deve ser uma das opções: CD, DVD/Blu-ray, Video game, Livro, Jogo de tabuleiro, Outros.
 - RN08 — O estado de conservação é obrigatório e deve ser um dos valores: Novo, Ótimo, Bom, Regular, Danificado.
 - RN09 — Um objeto com empréstimo em aberto não pode ser excluído.
-- RN10 — O status exibido do objeto é calculado: "Emprestado" se houver empréstimo em aberto; "Extraviado" se o último empréstimo foi encerrado como não devolvido; "Disponível" nos demais casos.
+- RN10 — O status exibido do objeto é calculado: "Emprestado" se houver empréstimo em aberto; "Extraviado" se o último empréstimo foi encerrado como não devolvido; "Disponível" nos demais casos. Para objeto emprestado, a lista de objetos e o detalhe do objeto mostram com quem ele está e a data limite, no formato "Emprestado — com Ana Souza até 17/11/2026". Se o empréstimo estiver atrasado, o texto termina com "(atrasado)".
 
 **Contatos**
 
@@ -131,7 +162,7 @@ Cada regra numerada, atômica e testável.
 
 **Renovação**
 
-- RN29 — Só um empréstimo ativo pode ser renovado. Empréstimos atrasados ou encerrados não podem.
+- RN29 — Só um empréstimo ativo pode ser renovado. Empréstimos atrasados ou encerrados não podem. O bloqueio vale só para o empréstimo atrasado: os outros empréstimos ativos do mesmo contato podem ser renovados normalmente.
 - RN30 — Na renovação, o dono informa N dias adicionais (N inteiro ≥ 1, sem limite máximo). A nova data limite é a data limite atual + N.
 - RN31 — Cada renovação fica registrada no histórico do empréstimo com a data da renovação, os dias adicionados, a data limite anterior e a nova.
 
@@ -180,6 +211,12 @@ Cada regra numerada, atômica e testável.
 - RN57 — Nas configurações da conta, o dono marca ou desmarca cada ponto facultativo como dia não útil: "Carnaval (segunda e terça)", "Quarta-feira de Cinzas" e "Corpus Christi". Feriados nacionais não podem ser desmarcados.
 - RN58 — Toda conta nova começa com a sugestão do sistema: Carnaval e Corpus Christi marcados como não úteis; Quarta-feira de Cinzas desmarcada (útil).
 - RN59 — Uma alteração nos pontos facultativos vale imediatamente para todos os empréstimos em aberto, cujo vencimento efetivo é recalculado. Devoluções já registradas mantêm os dias de atraso gravados (RN36).
+
+**Exclusão de empréstimo**
+
+- RN60 — O dono pode excluir qualquer empréstimo, em aberto ou encerrado, para corrigir um registro feito por engano. A exclusão exige confirmação ("Excluir o empréstimo de [objeto] para [contato]? Ele sai do histórico e não pode ser recuperado.") e remove também as renovações desse empréstimo.
+- RN61 — Depois da exclusão, tudo o que depende de empréstimos é recalculado como se ele nunca tivesse existido: status do objeto (RN10), bloqueio do contato (RN20), última devolução usada na RN16, painel (RN44) e histórico do objeto (RN50).
+- RN62 — A exclusão não altera o estado de conservação atual do objeto. Se a devolução excluída tiver mudado esse estado (RN35), o dono corrige editando o objeto.
 
 ## 6. Histórias de usuário
 
@@ -245,6 +282,14 @@ Critérios de aceite:
   Dado que tenho o objeto "Dom Casmurro" emprestado, o objeto "Abbey Road" sem empréstimo e o objeto "FIFA 23" registrado como não devolvido
   Quando abro a lista de objetos
   Então vejo "Dom Casmurro" com status "Emprestado", "Abbey Road" com status "Disponível" e "FIFA 23" com status "Extraviado"
+- Cenário: com quem está o objeto emprestado
+  Dado que "Dom Casmurro" está emprestado a "Ana Souza" com data limite 17/11/2026
+  Quando abro a lista de objetos
+  Então vejo "Dom Casmurro" com "Emprestado — com Ana Souza até 17/11/2026"
+- Cenário: objeto com empréstimo atrasado
+  Dado que hoje é 19/11/2026 e "Dom Casmurro" está com "Ana Souza", com data limite terça 17/11/2026
+  Quando abro a lista de objetos
+  Então vejo "Emprestado — com Ana Souza até 17/11/2026 (atrasado)"
 - Cenário: filtro por categoria
   Dado que tenho objetos das categorias "Livro" e "CD"
   Quando filtro pela categoria "Livro"
@@ -409,6 +454,11 @@ Critérios de aceite:
   Dado que o empréstimo de "FIFA 23" está atrasado
   Quando abro esse empréstimo
   Então a opção de renovar não está disponível e vejo "Empréstimos atrasados não podem ser renovados"
+- Cenário: contato com outro empréstimo atrasado
+  Dado que "Bruno Lima" tem o empréstimo de "FIFA 23" atrasado e o de "Abbey Road" ativo, com data limite 17/11/2026
+  Quando renovo o empréstimo de "Abbey Road" por 10 dias
+  Então a data limite de "Abbey Road" passa a ser 27/11/2026
+  E o empréstimo de "FIFA 23" continua sem a opção de renovar
 - Cenário: empréstimo encerrado
   Dado que o empréstimo de "Abbey Road" está "Devolvido"
   Quando abro esse empréstimo
@@ -598,6 +648,34 @@ Critérios de aceite:
   Quando vejo a lista
   Então feriados nacionais, como a Sexta-feira Santa, não aparecem para desmarcar
 
+### HU17 — Excluir empréstimo registrado por engano
+
+Como dono, quero excluir um empréstimo que registrei errado, para manter o controle do acervo fiel ao que aconteceu de fato.
+Regras relacionadas: RN10, RN16, RN20, RN60, RN61, RN62
+Critérios de aceite:
+
+- Cenário: excluir empréstimo em aberto
+  Dado que registrei "Dom Casmurro" para "Bruno Lima", mas quem pegou foi "Ana Souza"
+  Quando excluo esse empréstimo e confirmo
+  Então o empréstimo não aparece mais na lista nem no histórico de "Dom Casmurro"
+  E "Dom Casmurro" volta a "Disponível", e posso registrá-lo para "Ana Souza"
+- Cenário: desistir na confirmação
+  Dado que escolhi excluir um empréstimo
+  Quando cancelo a confirmação
+  Então nada muda
+- Cenário: devolução registrada por engano
+  Dado que "Dom Casmurro" foi emprestado a "Ana Souza" em 02/11/2026 com prazo de 15 dias e registrei a devolução por engano, mas o livro continua com ela
+  Quando excluo esse empréstimo e registro de novo o empréstimo para "Ana Souza" com data 02/11/2026 e prazo de 15 dias
+  Então o empréstimo fica em aberto com data limite 17/11/2026
+- Cenário: exclusão libera o contato
+  Dado que o único empréstimo atrasado de "Bruno Lima" foi registrado por engano
+  Quando excluo esse empréstimo e confirmo
+  Então "Bruno Lima" volta a poder receber novos empréstimos
+- Cenário: estado de conservação não volta sozinho
+  Dado que uma devolução registrada por engano mudou o estado de "Abbey Road" de "Ótimo" para "Regular"
+  Quando excluo esse empréstimo
+  Então "Abbey Road" continua com estado "Regular" até eu editar o objeto
+
 ## 7. Estados do empréstimo
 
 Os estados Ativo e Atrasado são calculados a partir do momento atual (horário de Brasília) e do vencimento efetivo. Devolvido e Não devolvido são estados finais gravados pelo dono.
@@ -614,7 +692,8 @@ Os estados Ativo e Atrasado são calculados a partir do momento atual (horário 
 | Ativo | Registrar devolução | Devolvido | RN32–RN35 |
 | Atrasado | Registrar devolução | Devolvido (com atraso) | RN32–RN36 |
 | Ativo / Atrasado | Registrar perda ou não devolução | Não devolvido | RN38–RN41 |
-| Devolvido / Não devolvido | Qualquer evento | Sem mudança (estado final) | RN29, RN32, RN38 |
+| Ativo / Atrasado / Devolvido / Não devolvido | Dono exclui o empréstimo e confirma | Empréstimo removido | RN60, RN61 |
+| Devolvido / Não devolvido | Qualquer evento, exceto a exclusão | Sem mudança (estado final) | RN29, RN32, RN38 |
 
 Correspondência com o filtro da lista (RN42): Ativo → Vigente; Atrasado → Atrasado; Devolvido e Não devolvido → Encerrado.
 
@@ -713,7 +792,7 @@ Valores calculados, não gravados: vencimento efetivo (RN26), situação (se `en
 - Conta 1 — N Objeto; Conta 1 — N Contato
 - Objeto 1 — N Empréstimo (no máximo 1 em aberto, RN05)
 - Contato 1 — N Empréstimo
-- Empréstimo 1 — N Renovação
+- Empréstimo 1 — N Renovação (as renovações são excluídas junto com o empréstimo, RN60)
 
 ## 9. Casos de borda e erros
 
@@ -746,6 +825,7 @@ Valores calculados, não gravados: vencimento efetivo (RN26), situação (se `en
 | Dono altera a configuração depois de devoluções já registradas | Os dias de atraso dessas devoluções não mudam | RN36, RN59 |
 | Renovar durante a tolerância | Permitido; a nova data limite parte da data limite atual | RN29, RN30 |
 | Renovar empréstimo atrasado | Recusado: "Empréstimos atrasados não podem ser renovados" | RN29 |
+| Renovar empréstimo ativo de contato que tem outro empréstimo atrasado | Permitido; só o empréstimo atrasado fica sem renovação | RN29 |
 | Renovar, devolver ou registrar perda de empréstimo encerrado | Opção indisponível | RN29, RN32, RN38 |
 | Editar objeto emprestado | Permitido; o estado de saída gravado no empréstimo não muda | RN19 |
 | Devolução no mesmo dia do empréstimo | Permitida; tempo emprestado = 0 dias | RN34, RN52 |
@@ -755,7 +835,7 @@ Valores calculados, não gravados: vencimento efetivo (RN26), situação (se `en
 | Objeto volta em estado pior que o da saída | Devolução aceita; o histórico mostra os dois estados | RN35, RN51 |
 | Perda registrada antes da data limite (ex.: amigo avisou que perdeu) | Permitida; o dono pode trocar a data sugerida | RN39, RN40 |
 | Motivo da não devolução com menos de 5 caracteres | "Informe o motivo (mínimo de 5 caracteres)" | RN39 |
-| Objeto extraviado que reaparece | No MVP continua "Extraviado"; o dono pode excluí-lo e cadastrá-lo de novo (ver seção 2.3) | RN41 |
+| Objeto extraviado que reaparece | No MVP continua "Extraviado". Se o registro de não devolução foi um engano, o dono exclui o empréstimo e o objeto volta a "Disponível"; se o objeto foi mesmo perdido e reapareceu, o tratamento fica para a v1.1 (seção 2.3) | RN41, RN60 |
 | Empréstimo atrasado | Sai de "Vencem em breve", entra em "Atrasados" e aparece no filtro "Atrasado" | RN47, RN48 |
 | Vários empréstimos atrasados | Um item por empréstimo em "Atrasados", do mais atrasado para o menos | RN48 |
 | Vários empréstimos com prazo próximo | Um item por empréstimo em "Vencem em breve", ordenados pela data limite | RN46 |
@@ -764,6 +844,10 @@ Valores calculados, não gravados: vencimento efetivo (RN26), situação (se `en
 | Contato excluído com empréstimos encerrados | Histórico mantido, exibindo "Contato removido" | RN54 |
 | Contato excluído com observação, justificativa ou motivo nos empréstimos dele | Os textos são apagados e exibidos como "Texto removido junto com o contato" | RN55 |
 | Texto livre de um empréstimo de outro contato cita o nome do contato excluído | Não é alterado: o sistema não procura nomes em textos de outros contatos | RN55 |
+| Excluir empréstimo com renovações | As renovações são excluídas junto | RN60 |
+| Excluir a devolução mais recente de um objeto | A RN16 passa a usar a devolução anterior a ela; o empréstimo pode ser registrado de novo com a data original | RN16, RN61 |
+| Excluir empréstimo atrasado | Sai de "Atrasados" e, se era o único atraso do contato, libera novos empréstimos para ele | RN20, RN61 |
+| Objeto emprestado na lista de objetos | Mostra com quem está e a data limite; se atrasado, termina com "(atrasado)" | RN10 |
 | Nenhum empréstimo para os filtros escolhidos | "Nenhum empréstimo encontrado para os filtros selecionados" | RN43 |
 
 ## 10. Requisitos não funcionais
@@ -789,7 +873,7 @@ Valores calculados, não gravados: vencimento efetivo (RN26), situação (se `en
 | D05 | Status do objeto e situação do empréstimo são calculados; só o encerramento é gravado | Gravar status e atualizar por rotina | Evita inconsistência, por exemplo um "Atrasado" que não foi atualizado |
 | D06 | Estado de conservação da saída fica gravado no empréstimo | Ler sempre o estado atual do objeto | Preserva o histórico mesmo que o objeto seja editado depois |
 | D07 | Data do empréstimo pode ser retroativa, mas não futura | Só a data de hoje; permitir datas futuras | Retroativa permite registrar empréstimos já feitos |
-| D08 | Empréstimo atrasado não pode ser renovado | Permitir renovar atrasados | Definição do dono |
+| D08 | Empréstimo atrasado não pode ser renovado; os outros empréstimos ativos do mesmo contato continuam renováveis | Permitir renovar atrasados; bloquear todas as renovações do contato | Definição do dono: o bloqueio é do empréstimo atrasado, não da pessoa |
 | D09 | Na devolução, o estado de conservação do objeto é atualizado para o estado no retorno | Manter o estado do cadastro e só registrar o de retorno | O próximo empréstimo já sai com o estado real do objeto |
 | D10 | Perda e não devolução são um único tipo de encerramento ("Não devolvido"), com motivo em texto livre | Dois tipos separados (Perda / Não devolução) | O pedido trata os dois casos juntos; o motivo diferencia |
 | D11 | A data em que o objeto deveria ter sido devolvido vem preenchida com a data limite atual, mas pode ser alterada | Campo vazio; usar sempre a data limite | Evita digitação no caso comum e permite registrar perda antecipada |
@@ -813,6 +897,8 @@ Valores calculados, não gravados: vencimento efetivo (RN26), situação (se `en
 | D29 | O MVP não tem reserva; a renovação depende apenas de o empréstimo estar ativo | Especificar a reserva já no MVP | A reserva é a maior fonte de complexidade (conflitos de período, cancelamento, expiração); fica para a v2.0, quando a renovação passa a exigir período livre |
 | D30 | No MVP, "Extraviado" é definitivo | Permitir que o objeto volte a "Disponível" | Evita regras de histórico para o reaparecimento; fica para a v1.1 |
 | D31 | Mudar os pontos facultativos recalcula os empréstimos em aberto, mas não as devoluções já registradas, cujos dias de atraso ficam gravados | Recalcular também o histórico; aplicar a mudança só a empréstimos novos | O dono vê o efeito da escolha na hora nos empréstimos em andamento, e o histórico não muda depois de fechado. É a única exceção à D05 |
+| D32 | O dono pode excluir qualquer empréstimo, em aberto ou encerrado, com confirmação; não há função de desfazer devolução | Excluir só empréstimos em aberto; função "desfazer devolução" que reabre o empréstimo | Definição do dono: ele tem controle total do acervo. Um único mecanismo corrige qualquer registro errado; uma devolução indevida é corrigida excluindo o empréstimo e registrando-o de novo com a data original |
+| D33 | A lista de objetos mostra com quem está cada objeto emprestado e até quando | Mostrar só o status "Emprestado" | Atende diretamente à proposta de valor ("saber onde está cada objeto") sem abrir outra tela |
 
 ## 12. Questões em aberto
 
