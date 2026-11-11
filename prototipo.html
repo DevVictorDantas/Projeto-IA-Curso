@@ -1,0 +1,1389 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empresta Aí</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  Empresta Aí — protótipo funcional do MVP (espec.md v1.0).
+  Um único arquivo, sem backend e sem build. Dados no localStorage.
+  Convenção dos comentários: // RNxx e // HUxx indicam a regra ou história implementada;
+  // LACUNA indica um ponto que a especificação não define (ver lista na resposta do Prompt 15).
+-->
+<style>
+  /* Visual inspirado no estilo de painéis SaaS de delivery (azul vivo, cinza claro, Roboto, cantos arredondados).
+     Marca, ícones e textos são próprios do Empresta Aí. */
+  :root {
+    --bg: #f6f7f8;
+    --sup: #ffffff;
+    --sup-2: #f9fafb;
+    --borda: #e2e6ec;
+    --borda-forte: #cfd6df;
+    --texto: #1f2937;
+    --suave: #5b6675;
+    --azul: #0098fc;          /* destaque: indicadores, ícones, foco */
+    --azul-acao: #0b74c8;     /* botões e links (contraste AA com branco) */
+    --azul-acao-esc: #0a66b0;
+    --azul-fundo: #005c9e;    /* painel de marca do login */
+    --azul-claro: #e6f2fa;
+    --azul-claro-2: #eff8ff;
+    --verde: #17663a;  --verde-bg: #e7f6ee;
+    --vermelho: #b42318; --vermelho-bg: #fdecec;
+    --ambar: #8a4b00;  --ambar-bg: #fff4e0;
+    --cinza: #4b5563;  --cinza-bg: #eef0f3;
+    --escuro: #1f2937;
+    --raio: 20px;
+    --raio-p: 10px;
+    --sombra: 0 4px 24px rgba(0, 0, 0, .06);
+    --sombra-modal: 0 12px 48px rgba(15, 23, 42, .22);
+  }
+  * { box-sizing: border-box; }
+  html { scrollbar-color: var(--borda-forte) transparent; }
+  body { margin: 0; background: var(--bg); color: var(--texto);
+         font: 15px/1.5 Roboto, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+  ::selection { background: #cfe8fd; color: var(--texto); }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  a { color: var(--azul-acao); text-underline-offset: 3px; }
+  h1, h2, h3 { line-height: 1.25; margin: 0 0 .5rem; text-wrap: balance; }
+  h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; }
+  h2 { font-size: 1.1rem; font-weight: 700; }
+  h3 { font-size: 1rem; font-weight: 600; }
+  table, .num { font-variant-numeric: tabular-nums; }
+  svg.ic { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Barra de data simulada (ferramenta do protótipo) */
+  #barra-simulacao { background: var(--escuro); color: #e5e7eb; padding: 8px 24px; position: sticky; top: 0; z-index: 5;
+                     display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13.5px; }
+  #barra-simulacao strong { color: #fff; font-weight: 600; }
+  #barra-simulacao .rotulo-prot { background: #374151; color: #e5e7eb; border-radius: 100px; padding: 2px 10px; font-size: 12px; font-weight: 600; letter-spacing: .02em; }
+  #barra-simulacao .desloc { background: #374151; border-radius: 100px; padding: 2px 10px; }
+  #barra-simulacao .desloc.ativo { background: #fbbf24; color: #1f2937; font-weight: 600; }
+  #barra-simulacao button { background: #374151; color: #fff; border: 1px solid #4b5563; border-radius: 100px;
+                            padding: 3px 12px; cursor: pointer; transition: background .15s; }
+  #barra-simulacao button:hover { background: #4b5563; }
+  #barra-simulacao .espaco { flex: 1; }
+
+  /* Casca do sistema: menu lateral + conteúdo */
+  .casca { display: grid; grid-template-columns: 248px 1fr; min-height: calc(100vh - 40px); }
+  .lateral { background: var(--sup); border-right: 1px solid var(--borda); padding: 20px 14px; display: flex; flex-direction: column;
+             position: sticky; top: 40px; height: calc(100vh - 40px); }
+  .marca { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.15rem; color: var(--texto); padding: 4px 10px 20px; }
+  .marca .selo { width: 36px; height: 36px; border-radius: 10px; background: var(--azul); display: grid; place-items: center; color: #fff; }
+  .marca .selo svg { width: 22px; height: 22px; stroke-width: 2; }
+  .marca .ai { color: var(--azul-acao); }
+  .lateral nav { display: flex; flex-direction: column; gap: 2px; }
+  .lateral nav button { display: flex; align-items: center; gap: 12px; background: none; border: 0; padding: 10px 12px; border-radius: var(--raio-p);
+                        cursor: pointer; color: var(--suave); font-weight: 500; text-align: left; position: relative; transition: background .15s, color .15s; }
+  .lateral nav button:hover { background: var(--sup-2); color: var(--texto); }
+  .lateral nav button[aria-current="page"] { background: var(--azul-claro); color: var(--azul-fundo); font-weight: 600; }
+  .lateral nav button[aria-current="page"] svg { color: var(--azul); }
+  .lateral .conta { margin-top: auto; border-top: 1px solid var(--borda); padding: 14px 10px 0; display: flex; flex-direction: column; gap: 10px; }
+  .lateral .conta .email { font-size: 13px; color: var(--suave); overflow-wrap: anywhere; }
+  .lateral .conta button { align-self: flex-start; }
+
+  .area { min-width: 0; display: flex; flex-direction: column; }
+  main { width: 100%; max-width: 1180px; padding: 28px 32px; flex: 1; }
+  .cabeca { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .cabeca h1 { margin: 0; }
+  .cartao { background: var(--sup); border: 1px solid var(--borda); border-radius: var(--raio); padding: 22px 24px; margin-bottom: 20px; box-shadow: var(--sombra); }
+  .cartao.tabela { padding: 0; overflow: hidden; }
+  .cartao.tabela .barra-filtros { padding: 16px 20px; border-bottom: 1px solid var(--borda); }
+  .linha { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .linha.entre { justify-content: space-between; }
+  .grade2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  /* Botões em pílula */
+  button.prim, button.sec, button.perigo { border-radius: 100px; padding: 8px 18px; cursor: pointer; border: 1px solid transparent;
+    font-weight: 500; display: inline-flex; align-items: center; gap: 8px; transition: background .15s, border-color .15s; }
+  button.prim { background: var(--azul-acao); color: #fff; }
+  button.prim:hover { background: var(--azul-acao-esc); }
+  button.prim:disabled { background: #a9c7e3; cursor: not-allowed; }
+  button.prim svg.ic { width: 18px; height: 18px; stroke-width: 2.2; }
+  button.sec { background: var(--sup); color: var(--texto); border-color: var(--borda-forte); }
+  button.sec:hover { background: var(--sup-2); border-color: #b8c1cc; }
+  button.perigo { background: var(--sup); color: var(--vermelho); border-color: #f1c4bf; }
+  button.perigo:hover { background: var(--vermelho-bg); }
+  button.link { background: none; border: 0; color: var(--azul-acao); padding: 0; cursor: pointer; text-align: left; font-weight: 500; }
+  button.link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  /* Tabelas */
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 13px 16px; border-bottom: 1px solid var(--borda); vertical-align: middle; }
+  thead th { background: var(--sup-2); font-size: 12.5px; color: var(--suave); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+  tbody tr:last-child td { border-bottom: 0; }
+  tbody tr:hover td { background: var(--azul-claro-2); }
+  th:first-child, td:first-child { padding-left: 20px; }
+  th:last-child, td:last-child { padding-right: 20px; }
+  td.acoes { white-space: nowrap; text-align: right; }
+  td.acoes button { margin-left: 6px; padding: 6px 14px; font-size: 14px; }
+  .cartao table { margin: 0; }
+  .cartao:not(.tabela) table th:first-child, .cartao:not(.tabela) table td:first-child { padding-left: 12px; }
+
+  /* Etiquetas de situação (sempre com texto) */
+  .tag { display: inline-flex; align-items: center; gap: 6px; border-radius: 100px; padding: 3px 11px; font-size: 13px; font-weight: 500; line-height: 1.4; }
+  .tag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex: none; }
+  .tag.vigente, .tag.disponivel { background: var(--verde-bg); color: var(--verde); }
+  .tag.atrasado { background: var(--vermelho-bg); color: var(--vermelho); }
+  .tag.emprestado, .tag.tolerancia { background: var(--ambar-bg); color: var(--ambar); }
+  .tag.encerrado, .tag.extraviado { background: var(--cinza-bg); color: var(--cinza); }
+  .suave { color: var(--suave); }
+  .pequeno { font-size: 13px; }
+
+  /* Painel da tela inicial */
+  .painel .cartao { padding: 0; overflow: hidden; }
+  .painel .cab-sec { display: flex; align-items: center; gap: 10px; padding: 18px 22px; border-bottom: 1px solid var(--borda); }
+  .painel .cab-sec h2 { margin: 0; }
+  .painel .contador { margin-left: auto; min-width: 28px; text-align: center; border-radius: 100px; padding: 1px 9px; font-size: 13px; font-weight: 600; }
+  .painel .breve .contador { background: var(--ambar-bg); color: var(--ambar); }
+  .painel .atrasados .contador { background: var(--vermelho-bg); color: var(--vermelho); }
+  .painel .ponto { width: 10px; height: 10px; border-radius: 50%; }
+  .painel .breve .ponto { background: #f59e0b; }
+  .painel .atrasados .ponto { background: #e5484d; }
+  .painel ul { list-style: none; margin: 0; padding: 6px 0; }
+  .painel li { padding: 12px 22px; border-bottom: 1px solid var(--borda); }
+  .painel li:last-child { border-bottom: 0; }
+  .painel li button.link { color: var(--texto); font-weight: 600; }
+  .painel li button.link:hover { color: var(--azul-acao); }
+  .vazio { color: var(--suave); padding: 18px 22px; margin: 0; }
+  .cartao:not(.tabela) .vazio, .historico + .vazio, h2 + .vazio { padding-left: 0; }
+  .nota { color: var(--suave); font-size: 13px; margin-top: -4px; }
+
+  .aviso { padding: 12px 16px; border-radius: var(--raio-p); margin-bottom: 18px; font-weight: 500; }
+  .aviso.erro { background: var(--vermelho-bg); color: var(--vermelho); }
+  .aviso.ok { background: var(--verde-bg); color: var(--verde); }
+
+  dl.dados { display: grid; grid-template-columns: 230px 1fr; gap: 8px 20px; margin: 0; }
+  dl.dados dt { color: var(--suave); }
+  dl.dados dd { margin: 0; }
+
+  .voltar { margin: 0 0 14px; }
+  .voltar button.link { gap: 4px; }
+  .filtro-cat { width: auto; padding: 7px 14px; border: 1px solid var(--borda-forte); border-radius: 100px; background: #fff; }
+  .busca { position: relative; margin: 0 12px 0 0; flex: 1; max-width: 360px; font-weight: 400; }
+  .busca svg.ic { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--suave); pointer-events: none; }
+  .busca input[type=search] { display: block; width: 100%; margin: 0; padding: 8px 14px 8px 40px; border: 1px solid var(--borda-forte);
+    border-radius: 100px; background: #fff; color: var(--texto); transition: border-color .15s, box-shadow .15s; }
+  .busca input[type=search]:hover { border-color: #b8c1cc; }
+  .busca input[type=search]::placeholder { color: var(--suave); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .filtro-cat:focus-visible { outline: none; border-color: var(--azul); box-shadow: 0 0 0 3px rgba(0, 152, 252, .22); }
+  .historico { padding: 0; margin: 0; }
+  .historico > li { list-style: none; border: 1px solid var(--borda); border-radius: var(--raio); padding: 18px 22px; margin-bottom: 14px; background: var(--sup); box-shadow: var(--sombra); }
+
+  /* Formulários */
+  form label { display: block; margin-bottom: 14px; font-weight: 500; font-size: 14px; color: var(--texto); }
+  form label.check { font-weight: 400; display: flex; gap: 10px; align-items: center; cursor: pointer; }
+  input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--azul-acao); margin: 0; }
+  form input[type=text], form input[type=email], form input[type=password], form input[type=date],
+  form input[type=number], form input[type=tel], form select, form textarea {
+    display: block; width: 100%; margin-top: 6px; padding: 10px 12px; border: 1px solid var(--borda-forte);
+    border-radius: var(--raio-p); background: #fff; color: var(--texto); font-weight: 400; transition: border-color .15s, box-shadow .15s; }
+  form input:hover, form select:hover, form textarea:hover { border-color: #b8c1cc; }
+  form textarea { min-height: 80px; resize: vertical; }
+  input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; border-color: var(--azul); box-shadow: 0 0 0 3px rgba(0, 152, 252, .22); }
+  button:focus-visible { outline: 3px solid rgba(0, 152, 252, .45); outline-offset: 2px; }
+  .erros { color: var(--vermelho); background: var(--vermelho-bg); border-radius: var(--raio-p); margin: 0 0 16px; padding: 10px 14px 10px 32px; }
+  .erros:empty { display: none; }
+  .previa { background: var(--azul-claro); color: var(--azul-fundo); padding: 10px 14px; border-radius: var(--raio-p); font-weight: 600; margin: 0 0 14px; }
+  .previa:empty { display: none; }
+  .alerta-contato { background: var(--vermelho-bg); color: var(--vermelho); padding: 10px 14px; border-radius: var(--raio-p); margin: 0 0 14px; font-weight: 500; }
+  .alerta-contato:empty { display: none; }
+  .filtro-situacao { border: 0; padding: 0; margin: 0; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .filtro-situacao legend { float: left; margin-right: 6px; font-weight: 600; font-size: 14px; }
+  .filtro-situacao label.check { margin: 0; }
+
+  .fundo { position: fixed; inset: 0; background: rgba(15, 23, 42, .42); display: flex; align-items: flex-start;
+           justify-content: center; padding: 64px 16px; overflow: auto; z-index: 10; }
+  .modal { background: var(--sup); border-radius: 24px; padding: 26px 28px; width: 540px; max-width: 100%; box-shadow: var(--sombra-modal); }
+  .modal h2 { font-size: 1.25rem; margin-bottom: 18px; }
+  .modal .botoes { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; padding-top: 16px; border-top: 1px solid var(--borda); }
+
+  /* Login e criação de conta: tela dividida */
+  .auth-tela { display: grid; grid-template-columns: minmax(380px, 1fr) minmax(420px, 1fr); min-height: calc(100vh - 40px); }
+  .auth-marca { background: var(--azul-fundo); color: #fff; padding: 56px 64px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; }
+  .auth-marca .marca { color: #fff; padding: 0; }
+  .auth-marca .marca .selo { background: #fff; color: var(--azul-fundo); }
+  .auth-marca .marca .ai { color: #d6ebfc; }
+  .auth-marca h2 { font-size: 2.1rem; line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; max-width: 15ch; margin: 0 0 16px; }
+  .auth-marca p { color: #d6ebfc; font-size: 1.05rem; max-width: 42ch; margin: 0; }
+  .auth-marca ul { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 12px; }
+  .auth-marca li { display: flex; gap: 12px; align-items: center; color: #fff; }
+  .auth-marca li svg { color: #9fd3fd; }
+  .auth-marca .ilustra { width: 100%; max-width: 380px; height: auto; }
+  .auth-form { display: flex; align-items: center; justify-content: center; padding: 48px 32px; background: var(--bg); }
+  .auth-form .caixa { width: 100%; max-width: 400px; background: var(--sup); border-radius: 24px; padding: 36px 34px; box-shadow: var(--sombra); border: 1px solid var(--borda); }
+  .auth-form h1 { font-size: 1.5rem; margin-bottom: 6px; }
+  .auth-form .sub { color: var(--suave); margin: 0 0 22px; }
+  .auth-form button.prim { width: 100%; justify-content: center; padding: 11px 18px; font-size: 15.5px; }
+  .auth-form .troca { text-align: center; margin: 18px 0 0; color: var(--suave); }
+  .dica { background: var(--azul-claro-2); border: 1px solid #cfe5f7; color: var(--texto); padding: 12px 14px; border-radius: var(--raio-p); font-size: 14px; margin-bottom: 20px; }
+
+  footer.rodape { padding: 0 32px 28px; font-size: 13px; color: var(--suave); max-width: 1180px; }
+  footer.rodape details summary { cursor: pointer; }
+  footer.rodape ul { padding-left: 18px; }
+  footer .falhou { color: var(--vermelho); font-weight: 600; }
+</style>
+</head>
+<body>
+<div id="barra-simulacao" role="region" aria-label="Controle de data simulada"></div>
+<div id="app"></div>
+<div id="modal-raiz"></div>
+
+<!-- =====================================================================
+     NÚCLEO: funções puras, sem acesso ao DOM nem ao relógio.
+     Seção 10 (Testabilidade): todo cálculo recebe "hoje" como entrada.
+     ===================================================================== -->
+<script id="nucleo">
+'use strict';
+
+const CATEGORIAS = ['CD', 'DVD/Blu-ray', 'Video game', 'Livro', 'Jogo de tabuleiro', 'Outros']; // RN07
+const ESTADOS = ['Novo', 'Ótimo', 'Bom', 'Regular', 'Danificado']; // RN08
+const FUSO = 'America/Sao_Paulo'; // RN22
+const CONF_SUGERIDA = { carnaval: true, cinzas: false, corpusChristi: true }; // RN58
+const TEXTO_REMOVIDO = 'Texto removido junto com o contato'; // RN55
+const DIA_MS = 86400000;
+
+// ---------- Datas (sempre "AAAA-MM-DD", aritmética em UTC para não sofrer com horário de verão) ----------
+function pad(n) { return String(n).padStart(2, '0'); }
+function utc(iso) { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d); }
+function somarDias(iso, n) { return new Date(utc(iso) + n * DIA_MS).toISOString().slice(0, 10); }
+function diffDias(a, b) { return Math.round((utc(a) - utc(b)) / DIA_MS); } // a − b, em dias
+function diaDaSemana(iso) { return new Date(utc(iso)).getUTCDay(); }
+function fmt(iso) { if (!iso) return ''; const [y, m, d] = iso.split('-'); return `${d}/${m}/${y}`; } // Seção 10: DD/MM/AAAA
+function isoValida(s) { return typeof s === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s) && fmt(somarDias(s, 0)) === fmt(s); }
+const NOMES_DIA = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+function dias(n) { return n === 1 ? '1 dia' : `${n} dias`; }
+
+// RN22 — "hoje" é a data no horário de Brasília, qualquer que seja o fuso do computador.
+function hojeBrasilia(instanteMs) {
+  const p = {};
+  new Intl.DateTimeFormat('en-US', { timeZone: FUSO, year: 'numeric', month: '2-digit', day: '2-digit' })
+    .formatToParts(new Date(instanteMs)).forEach(x => { p[x.type] = x.value; });
+  return `${p.year}-${p.month}-${p.day}`;
+}
+function horaBrasilia(instanteMs) {
+  return new Intl.DateTimeFormat('pt-BR', { timeZone: FUSO, hour: '2-digit', minute: '2-digit' }).format(new Date(instanteMs));
+}
+
+// ---------- RN25 — feriados e pontos facultativos calculados para qualquer ano ----------
+function pascoa(ano) { // algoritmo de Meeus/Jones/Butcher
+  const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31), dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return `${ano}-${pad(mes)}-${pad(dia)}`;
+}
+const _feriados = {};
+function feriadosNacionais(ano) { // RN25
+  if (_feriados[ano]) return _feriados[ano];
+  // LACUNA (seções 3 e 5, RN25): a spec não lista os feriados nacionais; usada a lista legal
+  // (Leis 662/1949, 6.802/1980, 10.607/2002 e 14.759/2023) mais a Sexta-feira Santa.
+  const f = {};
+  [['01-01', 'Confraternização Universal'], ['04-21', 'Tiradentes'], ['05-01', 'Dia do Trabalho'],
+   ['09-07', 'Independência do Brasil'], ['10-12', 'Nossa Senhora Aparecida'], ['11-02', 'Finados'],
+   ['11-15', 'Proclamação da República'], ['12-25', 'Natal']].forEach(([md, nome]) => { f[`${ano}-${md}`] = nome; });
+  if (ano >= 2024) f[`${ano}-11-20`] = 'Dia Nacional de Zumbi e da Consciência Negra';
+  f[somarDias(pascoa(ano), -2)] = 'Sexta-feira Santa'; // feriado móvel
+  return (_feriados[ano] = f);
+}
+function pontosFacultativos(ano) { // RN25, RN57
+  const p = pascoa(ano);
+  return {
+    carnaval: [somarDias(p, -48), somarDias(p, -47)],
+    cinzas: [somarDias(p, -46)],
+    corpusChristi: [somarDias(p, 60)],
+  };
+}
+function ehDiaUtil(iso, conf) { // RN25
+  const dow = diaDaSemana(iso);
+  if (dow === 0 || dow === 6) return false;
+  const ano = Number(iso.slice(0, 4));
+  if (feriadosNacionais(ano)[iso]) return false; // feriado nacional nunca é desmarcável (RN57)
+  const pf = pontosFacultativos(ano);
+  if (conf.carnaval && pf.carnaval.includes(iso)) return false;
+  if (conf.cinzas && pf.cinzas.includes(iso)) return false;
+  if (conf.corpusChristi && pf.corpusChristi.includes(iso)) return false;
+  return true;
+}
+
+// ---------- RN26 — vencimento efetivo ----------
+function vencimentoEfetivo(dataLimite, conf) {
+  if (ehDiaUtil(dataLimite, conf) && ehDiaUtil(somarDias(dataLimite, 1), conf)) return dataLimite;
+  let d = somarDias(dataLimite, 1);
+  while (!ehDiaUtil(d, conf)) d = somarDias(d, 1);
+  return d;
+}
+
+// ---------- Situação do empréstimo (seção 7, D05) ----------
+// RN24/RN27: vence às 23:59 de Brasília; atrasado a partir das 00:00 do dia seguinte.
+// Como "hoje" já é a data de Brasília, basta comparar datas: atrasado se hoje > vencimento efetivo.
+function situacao(emp, hoje, conf) {
+  if (emp.encerramento) return emp.encerramento; // 'Devolvido' | 'Não devolvido' (estados finais gravados)
+  return hoje > vencimentoEfetivo(emp.dataLimite, conf) ? 'Atrasado' : 'Ativo';
+}
+function situacaoFiltro(sit) { // RN42
+  return sit === 'Ativo' ? 'Vigente' : sit === 'Atrasado' ? 'Atrasado' : 'Encerrado';
+}
+function emTolerancia(emp, hoje, conf) { // glossário: tolerância
+  return situacao(emp, hoje, conf) === 'Ativo' && hoje > emp.dataLimite;
+}
+function diasAtrasoAberto(emp, hoje, conf) { // RN28 / D21
+  return diffDias(hoje, vencimentoEfetivo(emp.dataLimite, conf));
+}
+
+// RN23 + RN28 — texto de prazo de um empréstimo em aberto.
+function textoPrazo(emp, hoje, conf) {
+  const sit = situacao(emp, hoje, conf);
+  if (sit === 'Atrasado') return `Atrasado há ${dias(diasAtrasoAberto(emp, hoje, conf))}`; // RN28
+  const faltam = diffDias(emp.dataLimite, hoje); // RN23: data limite − hoje
+  if (faltam < 0) // RN28: tolerância
+    return `Prazo venceu em ${fmt(emp.dataLimite)}; devolução sem atraso até ${fmt(vencimentoEfetivo(emp.dataLimite, conf))}`;
+  if (faltam === 0) return 'vence hoje'; // RN23
+  // LACUNA (RN23): a spec só mostra o plural ("faltam 15 dias"); para 1 dia usado "falta 1 dia".
+  return faltam === 1 ? 'falta 1 dia' : `faltam ${faltam} dias`;
+}
+
+// RN45 — prazo próximo: ativo e hoje ≥ data limite − 2, até o vencimento efetivo.
+function prazoProximo(emp, hoje, conf) {
+  return situacao(emp, hoje, conf) === 'Ativo' && hoje >= somarDias(emp.dataLimite, -2);
+}
+// RN46 — texto do aviso no painel.
+function textoPainel(emp, hoje, conf) {
+  const f = diffDias(emp.dataLimite, hoje);
+  if (f === 2) return 'vence em 2 dias';
+  if (f === 1) return 'vence amanhã';
+  if (f === 0) return 'vence hoje';
+  return textoPrazo(emp, hoje, conf); // tolerância: texto da RN28
+}
+
+// RN36 — dias de atraso da devolução, gravados no registro.
+function diasAtrasoDevolucao(dataDevolucao, dataLimite, conf) {
+  return Math.max(0, diffDias(dataDevolucao, vencimentoEfetivo(dataLimite, conf)));
+}
+
+// RN52 — tempo emprestado em dias corridos.
+function tempoEmprestado(emp, hoje) {
+  const fim = emp.encerramento === 'Devolvido' ? emp.dataDevolucao
+            : emp.encerramento === 'Não devolvido' ? emp.dataPrevistaDevolucao : hoje;
+  return diffDias(fim, emp.dataEmprestimo);
+}
+
+// RN53 — "Houve atraso".
+function houveAtraso(emp, hoje, conf) {
+  if (emp.encerramento === 'Não devolvido') return 'Não devolvido';
+  if (emp.encerramento === 'Devolvido') return emp.diasAtrasoDevolucao > 0 ? `Sim, ${dias(emp.diasAtrasoDevolucao)}` : 'Não';
+  if (situacao(emp, hoje, conf) === 'Atrasado') return `Sim, ${dias(diasAtrasoAberto(emp, hoje, conf))}`;
+  return 'Não';
+}
+
+// Ordem "do mais recente para o mais antigo" (RN50).
+function ordenarRecentes(emps) {
+  // LACUNA (RN10, RN50): a spec não define o desempate entre empréstimos com a mesma data; usada a ordem de registro.
+  return [...emps].sort((a, b) => b.dataEmprestimo.localeCompare(a.dataEmprestimo) || (b.criadoEm || '').localeCompare(a.criadoEm || ''));
+}
+
+// RN10 — status calculado do objeto.
+function statusObjeto(empsDoObjeto, hoje, conf, nomeContatoDe) {
+  const aberto = empsDoObjeto.find(e => !e.encerramento); // RN05: no máximo um
+  if (aberto) {
+    const atrasado = situacao(aberto, hoje, conf) === 'Atrasado';
+    return { status: 'Emprestado', atrasado,
+             texto: `Emprestado — com ${nomeContatoDe(aberto)} até ${fmt(aberto.dataLimite)}${atrasado ? ' (atrasado)' : ''}` };
+  }
+  const ultimo = ordenarRecentes(empsDoObjeto)[0];
+  if (ultimo && ultimo.encerramento === 'Não devolvido') return { status: 'Extraviado', texto: 'Extraviado' }; // RN41, D30
+  return { status: 'Disponível', texto: 'Disponível' };
+}
+
+// RN16 — data da devolução mais recente do objeto.
+function ultimaDevolucao(empsDoObjeto) {
+  return empsDoObjeto.filter(e => e.encerramento === 'Devolvido').map(e => e.dataDevolucao).sort().pop() || null;
+}
+
+// ---------- Validações (retornam a lista de mensagens; vazia = válido) ----------
+const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function inteiroMinimo1(s) { return /^\s*\d+\s*$/.test(String(s ?? '')) && parseInt(s, 10) >= 1; } // RN17, RN30
+
+function validarConta(d, emailsExistentes) { // RN02
+  const erros = [];
+  const email = String(d.email || '').trim().toLowerCase();
+  // LACUNA (RN02): mensagem para e-mail inválido não definida; reaproveitada "E-mail inválido" (HU06).
+  if (!RE_EMAIL.test(email)) erros.push('E-mail inválido');
+  // LACUNA (RN02): a spec não diz se a comparação de e-mail ignora maiúsculas; e-mails comparados em minúsculas.
+  else if (emailsExistentes.includes(email)) erros.push('Já existe uma conta com este e-mail');
+  if (String(d.senha || '').length < 8) erros.push('A senha deve ter pelo menos 8 caracteres');
+  return erros;
+}
+
+function validarObjeto(d) { // HU02, HU04
+  const erros = [];
+  const nome = String(d.nome || '').trim(); // RN06: desconsidera espaços nas pontas
+  if (!nome) erros.push('Informe o nome do objeto');
+  // LACUNA (RN06): mensagem para nome acima de 100 caracteres não definida.
+  else if (nome.length > 100) erros.push('O nome do objeto deve ter até 100 caracteres');
+  // LACUNA (RN07): mensagem para categoria não informada não definida.
+  if (!CATEGORIAS.includes(d.categoria)) erros.push('Informe a categoria');
+  if (!ESTADOS.includes(d.estadoConservacao)) erros.push('Informe o estado de conservação'); // RN08
+  return erros;
+}
+
+function validarContato(d) { // RN12, HU06
+  const erros = [];
+  const nome = String(d.nome || '').trim();
+  if (!nome) erros.push('Informe o nome do contato');
+  else if (nome.length > 100) erros.push('O nome do contato deve ter até 100 caracteres'); // LACUNA (RN12): mensagem não definida
+  const tel = String(d.telefone || '').trim();
+  // LACUNA (RN12): "formato válido" de telefone não definido; aceito DDD + número (10 ou 11 dígitos)
+  // e mensagem "Telefone inválido" criada por analogia a "E-mail inválido".
+  if (tel && !(/^[\d\s()+-]+$/.test(tel) && [10, 11].includes(tel.replace(/\D/g, '').length))) erros.push('Telefone inválido');
+  const email = String(d.email || '').trim();
+  if (email && !RE_EMAIL.test(email)) erros.push('E-mail inválido');
+  if (String(d.observacao || '').length > 500) erros.push('A observação deve ter até 500 caracteres'); // LACUNA (seção 8): mensagem não definida
+  return erros;
+}
+
+// ctx: { hoje, statusObjeto, contatoAtrasado, nomeContato, ultimaDevolucao }
+function validarEmprestimo(d, ctx) { // HU08
+  const erros = [];
+  // LACUNA (RN13): mensagens para objeto, contato e data não informados não definidas.
+  if (!d.objetoId) erros.push('Informe o objeto');
+  // RN14: o objeto escolhido precisa estar "Disponível". LACUNA (seção 9): mensagem do pedido recusado não definida.
+  else if (ctx.statusObjeto !== 'Disponível') erros.push('Este objeto não está disponível para empréstimo');
+  if (!d.contatoId) erros.push('Informe o contato');
+  else if (ctx.contatoAtrasado) erros.push(`${ctx.nomeContato} tem empréstimo atrasado e não pode receber novos empréstimos`); // RN20
+  if (!d.dataEmprestimo || !isoValida(d.dataEmprestimo)) erros.push('Informe a data do empréstimo');
+  else if (d.dataEmprestimo > ctx.hoje) erros.push('A data do empréstimo não pode ser futura'); // RN15
+  else if (ctx.ultimaDevolucao && d.dataEmprestimo < ctx.ultimaDevolucao) // RN16
+    erros.push(`Este objeto só voltou em ${fmt(ctx.ultimaDevolucao)}. A data do empréstimo não pode ser anterior`);
+  if (!inteiroMinimo1(d.prazoDias)) erros.push('O prazo deve ser de pelo menos 1 dia'); // RN17
+  if (String(d.observacao || '').length > 500) erros.push('A observação deve ter até 500 caracteres'); // RN21 — LACUNA: mensagem não definida
+  return erros;
+}
+
+function validarRenovacao(d, sit) { // HU09
+  const erros = [];
+  if (sit === 'Atrasado') erros.push('Empréstimos atrasados não podem ser renovados'); // RN29
+  // LACUNA (RN29): mensagem para renovar empréstimo encerrado não definida (a opção fica indisponível na tela).
+  else if (sit !== 'Ativo') erros.push('Só um empréstimo ativo pode ser renovado');
+  if (!inteiroMinimo1(d.diasAdicionais)) erros.push('Informe pelo menos 1 dia'); // RN30
+  return erros;
+}
+
+function validarDevolucao(d, emp, hoje) { // HU10
+  const erros = [];
+  // LACUNA (RN33): mensagem para data de devolução não informada não definida.
+  if (!d.dataDevolucao || !isoValida(d.dataDevolucao)) erros.push('Informe a data de devolução');
+  else if (d.dataDevolucao > hoje) erros.push('A data de devolução não pode ser futura'); // RN34
+  else if (d.dataDevolucao < emp.dataEmprestimo) erros.push('A devolução não pode ser anterior ao empréstimo'); // RN34
+  if (!ESTADOS.includes(d.estadoRetorno)) erros.push('Informe o estado de conservação no retorno'); // RN33
+  if (d.solicitadaPeloDono) { // RN37
+    const j = String(d.justificativa || '').trim();
+    if (!j) erros.push('Informe a justificativa');
+    // LACUNA (RN37): mensagem para justificativa com menos de 5 caracteres não definida; usada a forma da mensagem do motivo (seção 9).
+    else if (j.length < 5) erros.push('Informe a justificativa (mínimo de 5 caracteres)');
+    else if (j.length > 500) erros.push('A justificativa deve ter até 500 caracteres'); // LACUNA: mensagem não definida
+  }
+  return erros;
+}
+
+function validarNaoDevolucao(d, emp) { // HU11
+  const erros = [];
+  // LACUNA (RN39): mensagem para data não informada não definida.
+  if (!d.dataPrevista || !isoValida(d.dataPrevista)) erros.push('Informe a data em que o objeto deveria ter sido devolvido');
+  else if (d.dataPrevista < emp.dataEmprestimo) erros.push('A data não pode ser anterior ao empréstimo'); // RN40
+  const m = String(d.motivo || '').trim();
+  if (!m) erros.push('Informe o motivo'); // RN39
+  else if (m.length < 5) erros.push('Informe o motivo (mínimo de 5 caracteres)'); // RN39, seção 9
+  else if (m.length > 500) erros.push('O motivo deve ter até 500 caracteres'); // LACUNA: mensagem não definida
+  return erros;
+}
+
+// ---------- Seção 10 (Segurança): senha guardada cifrada (hash SHA-256 com sal) ----------
+// Observação: num protótipo sem servidor isto só evita a senha em texto puro no localStorage.
+function sha256(texto) {
+  const rr = (v, a) => (v >>> a) | (v << (32 - a));
+  const K = [], H = []; const composto = {}; let p = 0;
+  for (let c = 2; p < 64; c++) {
+    if (!composto[c]) {
+      for (let i = 0; i < 313; i += c) composto[i] = c;
+      if (p < 8) H[p] = (Math.pow(c, 1 / 2) * 4294967296) | 0;
+      K[p++] = (Math.pow(c, 1 / 3) * 4294967296) | 0;
+    }
+  }
+  const bytes = new TextEncoder().encode(texto);
+  const l = bytes.length;
+  const buf = new Uint8Array(((l + 9 + 63) >> 6) << 6);
+  buf.set(bytes); buf[l] = 0x80;
+  const dv = new DataView(buf.buffer);
+  dv.setUint32(buf.length - 4, (l * 8) >>> 0);
+  dv.setUint32(buf.length - 8, Math.floor((l * 8) / 4294967296));
+  let h = H.slice();
+  const w = new Array(64);
+  for (let off = 0; off < buf.length; off += 64) {
+    for (let i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4) | 0;
+    for (let i = 16; i < 64; i++) {
+      const s0 = rr(w[i - 15], 7) ^ rr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+      const s1 = rr(w[i - 2], 17) ^ rr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0;
+    }
+    let [a, b, c, d, e, f, g, hh] = h;
+    for (let i = 0; i < 64; i++) {
+      const t1 = (hh + (rr(e, 6) ^ rr(e, 11) ^ rr(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+      const t2 = ((rr(a, 2) ^ rr(a, 13) ^ rr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+      hh = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    h = [h[0] + a, h[1] + b, h[2] + c, h[3] + d, h[4] + e, h[5] + f, h[6] + g, h[7] + hh].map(x => x | 0);
+  }
+  return h.map(x => (x >>> 0).toString(16).padStart(8, '0')).join('');
+}
+</script>
+
+<!-- =====================================================================
+     TESTES DE ACEITE das regras de data (seção 10 — Testabilidade).
+     Casos da seção 7, da seção 9 e dos cenários datados das HUs.
+     ===================================================================== -->
+<script id="testes">
+function executarTestes() {
+  const S = CONF_SUGERIDA;
+  const casos = [];
+  const t = (nome, obtido, esperado) => casos.push({ nome, obtido, esperado, ok: JSON.stringify(obtido) === JSON.stringify(esperado) });
+  const emp = (dl, extra) => Object.assign({ dataEmprestimo: '2026-11-02', dataLimite: dl, encerramento: null }, extra);
+
+  // Seção 7 — exemplos de vencimento efetivo (RN26)
+  t('Seção 7: terça 17/11/2026', vencimentoEfetivo('2026-11-17', S), '2026-11-17');
+  t('Seção 7: sexta 06/11/2026', vencimentoEfetivo('2026-11-06', S), '2026-11-09');
+  t('Seção 7: quinta 19/11/2026 (sexta feriado)', vencimentoEfetivo('2026-11-19', S), '2026-11-23');
+  t('Seção 7: domingo 15/11/2026', vencimentoEfetivo('2026-11-15', S), '2026-11-16');
+  t('Seção 7: quinta 02/04/2026 (Sexta-feira Santa)', vencimentoEfetivo('2026-04-02', S), '2026-04-06');
+  t('Seção 7: sexta 13/02/2026 (Carnaval)', vencimentoEfetivo('2026-02-13', S), '2026-02-18');
+  t('Seção 7: quarta 03/06/2026 (Corpus Christi)', vencimentoEfetivo('2026-06-03', S), '2026-06-05');
+  // HU16 — pontos facultativos
+  t('HU16: Carnaval desmarcado', vencimentoEfetivo('2026-02-13', { ...S, carnaval: false }), '2026-02-16');
+  t('HU16: Cinzas marcada', vencimentoEfetivo('2026-02-13', { ...S, cinzas: true }), '2026-02-19');
+  t('RN25: Páscoa 2026', pascoa(2026), '2026-04-05');
+  // RN24/RN27
+  t('RN24: no dia do vencimento ainda é Ativo', situacao(emp('2026-11-17'), '2026-11-17', S), 'Ativo');
+  t('RN24: no dia seguinte já é Atrasado', situacao(emp('2026-11-17'), '2026-11-18', S), 'Atrasado');
+  // RN22 — fuso de Lisboa: 01:00 de 03/11 em Lisboa = 22:00 de 02/11 em Brasília
+  t('HU08: hoje no horário de Brasília', hojeBrasilia(Date.UTC(2026, 10, 3, 1, 0)), '2026-11-02');
+  // RN23 / HU08
+  t('HU08: faltam 15 dias', textoPrazo(emp('2026-11-17'), '2026-11-02', S), 'faltam 15 dias');
+  t('HU08: retroativo já atrasado', textoPrazo(emp(somarDias('2026-10-10', 10)), '2026-11-02', S), 'Atrasado há 13 dias');
+  t('HU09: renovação 17/11 + 10', somarDias('2026-11-17', 10), '2026-11-27');
+  // HU10 / RN36
+  t('HU10: devolução com atraso de 3 dias', diasAtrasoDevolucao('2026-11-20', '2026-11-17', S), 3);
+  t('HU10: sexta → segunda sem atraso', diasAtrasoDevolucao('2026-11-09', '2026-11-06', S), 0);
+  t('HU10: feriado após a data limite', diasAtrasoDevolucao('2026-11-23', '2026-11-19', S), 0);
+  t('HU14: atraso de 2 dias (dl 08/09)', diasAtrasoDevolucao('2026-09-10', '2026-09-08', S), 2);
+  t('HU14: 9 dias emprestado', tempoEmprestado({ dataEmprestimo: '2026-09-01', encerramento: 'Devolvido', dataDevolucao: '2026-09-10' }, '2026-11-02'), 9);
+  // HU12 / HU13 / HU15
+  const tol = 'Prazo venceu em 06/11/2026; devolução sem atraso até 09/11/2026';
+  t('HU12: texto na tolerância', textoPrazo(emp('2026-11-06'), '2026-11-07', S), tol);
+  t('HU13: vence em 2 dias', textoPainel(emp('2026-11-17'), '2026-11-15', S), 'vence em 2 dias');
+  t('HU13: vence hoje', textoPainel(emp('2026-11-17'), '2026-11-17', S), 'vence hoje');
+  t('HU13: fora da janela (14/11)', prazoProximo(emp('2026-11-17'), '2026-11-14', S), false);
+  t('HU13: tolerância no painel', prazoProximo(emp('2026-11-06'), '2026-11-08', S) && textoPainel(emp('2026-11-06'), '2026-11-08', S), tol);
+  t('HU15: atrasado há 1 dia', textoPrazo(emp('2026-11-17'), '2026-11-18', S), 'Atrasado há 1 dia');
+  t('HU15: atrasado há 2 dias', textoPrazo(emp('2026-11-17'), '2026-11-19', S), 'Atrasado há 2 dias');
+  t('HU15: tolerância não é atraso', situacao(emp('2026-11-06'), '2026-11-07', S), 'Ativo');
+  // RN16 / HU08
+  const ctx = { hoje: '2026-11-02', statusObjeto: 'Disponível', contatoAtrasado: false, nomeContato: 'Ana Souza', ultimaDevolucao: '2026-09-10' };
+  t('HU08: retroativo sobreposto', validarEmprestimo({ objetoId: 'o', contatoId: 'c', dataEmprestimo: '2026-09-05', prazoDias: '10' }, ctx),
+    ['Este objeto só voltou em 10/09/2026. A data do empréstimo não pode ser anterior']);
+  t('HU08: mesmo dia da última devolução', validarEmprestimo({ objetoId: 'o', contatoId: 'c', dataEmprestimo: '2026-09-10', prazoDias: '10' }, ctx), []);
+  t('HU08: prazo 0', validarEmprestimo({ objetoId: 'o', contatoId: 'c', dataEmprestimo: '2026-11-02', prazoDias: '0' }, ctx), ['O prazo deve ser de pelo menos 1 dia']);
+  t('Seção 9: prazo com decimais', inteiroMinimo1('1.5'), false);
+  t('HU08: prazo de 400 dias aceito', inteiroMinimo1('400'), true);
+  t('Hash SHA-256 ("abc")', sha256('abc'), 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+  return casos;
+}
+if (typeof module !== 'undefined') module.exports = { executarTestes };
+</script>
+
+<!-- =====================================================================
+     INTERFACE
+     ===================================================================== -->
+<script id="ui">
+'use strict';
+const CHAVE = 'emprestaAi.db.v1';
+
+// ---------- Persistência (localStorage) ----------
+function carregar() {
+  try {
+    const bruto = localStorage.getItem(CHAVE);
+    if (bruto) return JSON.parse(bruto);
+  } catch (e) { /* armazenamento indisponível: segue com dados de exemplo em memória */ }
+  return criarDadosExemplo(hojeBrasilia(Date.now()), 0);
+}
+function salvar() { try { localStorage.setItem(CHAVE, JSON.stringify(db)); } catch (e) { /* ignora */ } }
+
+let _seq = 0;
+function novoId(prefixo) { return `${prefixo}-${Date.now().toString(36)}-${(_seq++).toString(36)}${Math.random().toString(36).slice(2, 6)}`; }
+function carimbo() { return new Date(agoraMs()).toISOString(); }
+
+// ---------- Dados de exemplo (relativos à data em que são criados) ----------
+function criarDadosExemplo(hoje, offsetDias) {
+  const H = n => somarDias(hoje, n);
+  let ordem = 0; const criado = () => `2000-01-01T00:00:${pad(ordem++)}.000Z`; // só para ordenar o registro
+  const conf = CONF_SUGERIDA;
+  const conta = { id: 'conta-demo', email: 'demo@emprestaai.com', sal: 'demo', senhaHash: sha256('demo' + 'emprestaai'),
+                  carnaval: true, cinzas: false, corpusChristi: true, criadoEm: criado() }; // RN58
+  const obj = (id, nome, categoria, estado) => ({ id, contaId: conta.id, nome, categoria, estadoConservacao: estado, criadoEm: criado(), atualizadoEm: criado() });
+  const objetos = [
+    obj('o1', 'Dom Casmurro', 'Livro', 'Ótimo'),
+    obj('o2', 'Abbey Road', 'CD', 'Bom'),
+    obj('o3', 'FIFA 23', 'Video game', 'Bom'),
+    obj('o4', 'The Last of Us Part II', 'Video game', 'Ótimo'),
+    obj('o5', 'Catan', 'Jogo de tabuleiro', 'Novo'),
+    obj('o6', 'O Senhor dos Anéis — trilogia', 'DVD/Blu-ray', 'Regular'),
+    obj('o7', 'Sapiens', 'Livro', 'Bom'),
+    obj('o8', 'Kind of Blue', 'CD', 'Ótimo'),
+  ];
+  const ctt = (id, nome, telefone, email) => ({ id, contaId: conta.id, nome, telefone, email, observacao: '' });
+  const contatos = [
+    ctt('k1', 'Ana Souza', '(11) 98888-7777', 'ana.souza@exemplo.com'),
+    ctt('k2', 'Bruno Lima', '(21) 97777-6666', ''),
+    ctt('k3', 'Carla Mendes', '', 'carla@exemplo.com'),
+    ctt('k4', 'Diego Rocha', '(31) 3222-1111', ''),
+  ];
+  const estadoInicial = { o1: 'Ótimo', o2: 'Ótimo', o3: 'Bom', o4: 'Ótimo', o5: 'Novo', o6: 'Regular', o7: 'Bom' };
+  const emp = (id, objetoId, contatoId, inicio, prazo, extra = {}) => Object.assign({
+    id, objetoId, contatoId, dataEmprestimo: H(inicio), prazoDias: prazo, dataLimite: somarDias(H(inicio), prazo),
+    estadoSaida: estadoInicial[objetoId], observacao: '', encerramento: null, dataDevolucao: null, estadoRetorno: null,
+    solicitadaPeloDono: false, justificativa: null, dataPrevistaDevolucao: null, motivoNaoDevolucao: null,
+    diasAtrasoDevolucao: null, encerradoEm: null, textosRemovidos: [], criadoEm: criado(),
+  }, extra);
+  const devolvido = (e, data, estado, outros = {}) => Object.assign(e, { encerramento: 'Devolvido', dataDevolucao: H(data), estadoRetorno: estado,
+    diasAtrasoDevolucao: diasAtrasoDevolucao(H(data), e.dataLimite, conf), encerradoEm: criado() }, outros);
+
+  const e1 = devolvido(emp('e1', 'o1', 'k2', -70, 7), -60, 'Ótimo');
+  const e8 = devolvido(emp('e8', 'o2', 'k1', -50, 10), -42, 'Bom',
+    { solicitadaPeloDono: true, justificativa: 'Precisei do disco para uma festa' });
+  e8.estadoSaida = 'Ótimo';
+  const e3 = emp('e3', 'o3', 'k2', -40, 10);
+  Object.assign(e3, { encerramento: 'Não devolvido', dataPrevistaDevolucao: e3.dataLimite, motivoNaoDevolucao: 'Bruno perdeu o jogo na mudança', encerradoEm: criado() });
+  const e4 = emp('e4', 'o4', 'k2', -30, 14, { observacao: 'Cobrar junto com o controle extra' }); // atrasado
+  const e5 = emp('e5', 'o5', 'k2', -25, 30); // ativo do mesmo contato (HU09)
+  const e2 = emp('e2', 'o1', 'k1', -13, 15, { observacao: 'Vou precisar de volta para uma viagem' }); // vence em 2 dias
+  const e7 = emp('e7', 'o6', 'k4', -6, 7); // vence amanhã
+  const e6 = emp('e6', 'o7', 'k3', -20, 15); // renovado
+  const renovacoes = [{ id: 'r1', emprestimoId: 'e6', dataRenovacao: H(-6), diasAdicionais: 15, dataLimiteAnterior: e6.dataLimite, dataLimiteNova: somarDias(e6.dataLimite, 15) }];
+  e6.dataLimite = renovacoes[0].dataLimiteNova;
+
+  return { versao: 1, offsetDias, sessao: conta.id, contas: [conta], objetos, contatos,
+           emprestimos: [e1, e8, e3, e4, e5, e2, e7, e6], renovacoes };
+}
+
+// ---------- Relógio simulado ----------
+let db = carregar();
+function agoraMs() { return Date.now() + (db.offsetDias || 0) * DIA_MS; }
+function hoje() { return hojeBrasilia(agoraMs()); } // RN22
+
+// ---------- Consultas da conta logada (RN03) ----------
+function contaAtual() { return db.contas.find(c => c.id === db.sessao) || null; }
+function conf() { const c = contaAtual(); return { carnaval: !!c.carnaval, cinzas: !!c.cinzas, corpusChristi: !!c.corpusChristi }; }
+function objetosConta() { const id = db.sessao; return db.objetos.filter(o => o.contaId === id); } // RN03
+function contatosConta() { const id = db.sessao; return db.contatos.filter(c => c.contaId === id); } // RN03
+function emprestimosConta() { const ids = new Set(objetosConta().map(o => o.id)); return db.emprestimos.filter(e => ids.has(e.objetoId)); } // RN03
+function objeto(id) { return objetosConta().find(o => o.id === id) || null; }
+function contato(id) { return contatosConta().find(c => c.id === id) || null; }
+function emprestimo(id) { return emprestimosConta().find(e => e.id === id) || null; }
+function empsDoObjeto(id) { return db.emprestimos.filter(e => e.objetoId === id); }
+function empsDoContato(id) { return emprestimosConta().filter(e => e.contatoId === id); }
+function renovacoesDe(id) { return db.renovacoes.filter(r => r.emprestimoId === id).sort((a, b) => a.dataRenovacao.localeCompare(b.dataRenovacao)); }
+function nomeContatoDe(emp) { const c = emp.contatoId && contato(emp.contatoId); return c ? c.nome : 'Contato removido'; } // RN54
+function nomeObjetoDe(emp) { const o = objeto(emp.objetoId); return o ? o.nome : ''; }
+function statusDe(o) { return statusObjeto(empsDoObjeto(o.id), hoje(), conf(), nomeContatoDe); } // RN10
+function contatoTemAtraso(id) { return empsDoContato(id).some(e => situacao(e, hoje(), conf()) === 'Atrasado'); } // RN20
+function textoLivre(emp, campo) { // RN55
+  return emp.textosRemovidos && emp.textosRemovidos.includes(campo) ? TEXTO_REMOVIDO : (emp[campo] || '');
+}
+
+// ---------- Utilidades de UI ----------
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function opcoes(lista, selecionado, rotuloVazio = 'Selecione') {
+  return `<option value="">${esc(rotuloVazio)}</option>` +
+    lista.map(v => `<option value="${esc(v)}"${v === selecionado ? ' selected' : ''}>${esc(v)}</option>`).join('');
+}
+function tagSituacao(emp) { // Seção 10 (Acessibilidade): a situação é sempre indicada por texto
+  const sit = situacao(emp, hoje(), conf());
+  if (sit === 'Ativo') return emTolerancia(emp, hoje(), conf()) ? '<span class="tag tolerancia">Vigente (tolerância)</span>' : '<span class="tag vigente">Vigente</span>';
+  if (sit === 'Atrasado') return '<span class="tag atrasado">Atrasado</span>';
+  return `<span class="tag encerrado">${esc(sit)}</span>`;
+}
+function tagStatusObjeto(st) {
+  const cls = { 'Disponível': 'disponivel', 'Emprestado': st.atrasado ? 'atrasado' : 'emprestado', 'Extraviado': 'extraviado' }[st.status];
+  return `<span class="tag ${cls}">${esc(st.texto)}</span>`;
+}
+
+const ICONES = {
+  marca: '<path d="M20 11a8 8 0 0 0-14.5-4.5"/><path d="M5 3v4h4"/><path d="M4 13a8 8 0 0 0 14.5 4.5"/><path d="M19 21v-4h-4"/>',
+  inicio: '<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20h14V9.5"/><path d="M10 20v-5h4v5"/>',
+  objetos: '<path d="M21 8 12 3 3 8v8l9 5 9-5V8Z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/>',
+  contatos: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.6 3.3-5.5 6.5-5.5s5.9 1.9 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8"/><path d="M18 14.8c1.9.7 3.1 2.4 3.5 5.2"/>',
+  emprestimos: '<path d="M4 8h13"/><path d="m13 4 4 4-4 4"/><path d="M20 16H7"/><path d="m11 12-4 4 4 4"/>',
+  config: '<path d="M4 6h10M4 12h4M12 12h8M4 18h12"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  sair: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="m10 16-4-4 4-4"/><path d="M6 12h10"/>',
+  mais: '<path d="M12 5v14M5 12h14"/>',
+  voltar: '<path d="m15 6-6 6 6 6"/>',
+  busca: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  relogio: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  calendario: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
+  local: '<path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>',
+};
+function ic(nome) { return `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONES[nome]}</svg>`; }
+function marcaHtml() { return `<div class="marca"><span class="selo">${ic('marca')}</span><span>Empresta <span class="ai">Aí</span></span></div>`; }
+
+const ui = { view: 'inicio', id: null, filtroCategoria: '', buscaNome: '', filtros: null, aviso: null, erroAuth: [] };
+function normalizarBusca(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
+function ir(view, id = null) {
+  ui.view = view; ui.id = id; ui.aviso = null; ui.erroAuth = [];
+  if (view === 'emprestimos') ui.filtros = { Vigente: true, Atrasado: true, Encerrado: false }; // RN43
+  render(); window.scrollTo(0, 0);
+}
+function avisar(msg, tipo = 'erro') { ui.aviso = { msg, tipo }; render(); }
+
+// ---------- Render ----------
+function render() {
+  renderBarra();
+  const app = document.getElementById('app');
+  if (!contaAtual()) { // RN01 — sem login, só as telas de entrar e criar conta
+    app.innerHTML = ui.view === 'criar' ? telaCriarConta() : telaEntrar();
+    return;
+  }
+  if (!['inicio', 'objetos', 'objeto', 'contatos', 'emprestimos', 'emprestimo', 'config'].includes(ui.view)) ui.view = 'inicio';
+  app.innerHTML = `<div class="casca">${menuLateral()}<div class="area"><main>` +
+    (ui.aviso ? `<div class="aviso ${ui.aviso.tipo}" role="alert">${esc(ui.aviso.msg)}</div>` : '') +
+    conteudo() + `</main>${rodapeHtml()}</div></div>`;
+}
+
+function renderBarra() { // Controle de data simulada (requisito 4 do protótipo)
+  const ms = agoraMs(), h = hojeBrasilia(ms), off = db.offsetDias || 0;
+  document.getElementById('barra-simulacao').innerHTML = `
+    <span class="rotulo-prot">Protótipo</span>
+    <span><strong>Data simulada</strong> (horário de Brasília): ${NOMES_DIA[diaDaSemana(h)]}, ${fmt(h)}, ${horaBrasilia(ms)}</span>
+    <span class="desloc${off ? ' ativo' : ''}">${off ? `+${dias(off)} em relação a hoje` : 'hoje real'}</span>
+    <button type="button" data-acao="sim-mais" data-dias="1">+1 dia</button>
+    <button type="button" data-acao="sim-mais" data-dias="7">+7 dias</button>
+    <button type="button" data-acao="sim-hoje">Voltar para hoje</button>
+    <span class="espaco"></span>
+    <button type="button" data-acao="restaurar">Restaurar dados de exemplo</button>`;
+}
+
+function menuLateral() {
+  const item = (view, rotulo) => `<button type="button" data-acao="ir" data-view="${view}"${ui.view === view || (ui.view === view.slice(0, -1)) ? ' aria-current="page"' : ''}>${ic(view)}${rotulo}</button>`;
+  return `<aside class="lateral">
+    ${marcaHtml()}
+    <nav aria-label="Principal">${item('inicio', 'Início')}${item('objetos', 'Objetos')}${item('contatos', 'Contatos')}${item('emprestimos', 'Empréstimos')}${item('config', 'Configurações')}</nav>
+    <div class="conta"><span class="email">${esc(contaAtual().email)}</span>
+      <button type="button" class="sec" data-acao="sair">${ic('sair')}Sair</button></div>
+  </aside>`;
+}
+
+function conteudo() {
+  switch (ui.view) {
+    case 'objetos': return telaObjetos();
+    case 'objeto': return telaObjeto();
+    case 'contatos': return telaContatos();
+    case 'emprestimos': return telaEmprestimos();
+    case 'emprestimo': return telaEmprestimo();
+    case 'config': return telaConfig();
+    default: return telaInicio();
+  }
+}
+
+// ---------- HU01 — Acesso ----------
+function ladoMarca() {
+  return `<section class="auth-marca">
+    ${marcaHtml()}
+    <div>
+      <h2>Saiba onde está cada objeto que você emprestou.</h2>
+      <p>Registre o seu acervo, os seus contatos e cada empréstimo, da saída até a devolução.</p>
+      <ul>
+        <li>${ic('calendario')}Data limite e dias faltantes em cada empréstimo</li>
+        <li>${ic('relogio')}Atraso só depois de fins de semana e feriados</li>
+        <li>${ic('local')}Com quem está cada objeto, numa só lista</li>
+      </ul>
+    </div>
+    <p class="pequeno">Empresta Aí · protótipo do MVP</p>
+  </section>`;
+}
+function telaEntrar() {
+  return `<div class="auth-tela">${ladoMarca()}<section class="auth-form"><div class="caixa">
+    <h1>Entrar</h1>
+    <p class="sub">Acesse o seu acervo com e-mail e senha.</p>
+    <p class="dica">Conta de demonstração com dados de exemplo:<br><strong>demo@emprestaai.com</strong> / senha <strong>emprestaai</strong></p>
+    <form data-form="entrar" novalidate>
+      <ul class="erros" role="alert">${ui.erroAuth.map(m => `<li>${esc(m)}</li>`).join('')}</ul>
+      <label>E-mail <input type="email" name="email" autocomplete="username" required></label>
+      <label>Senha <input type="password" name="senha" autocomplete="current-password" required></label>
+      <button type="submit" class="prim">Entrar</button>
+      <p class="troca">Ainda não tem conta? <button type="button" class="link" data-acao="ir-auth" data-view="criar">Criar conta</button></p>
+    </form></div></section></div>`;
+}
+function telaCriarConta() {
+  return `<div class="auth-tela">${ladoMarca()}<section class="auth-form"><div class="caixa">
+    <h1>Criar conta</h1>
+    <p class="sub">Use um e-mail e uma senha com pelo menos 8 caracteres.</p>
+    <form data-form="criar" novalidate>
+      <ul class="erros" role="alert">${ui.erroAuth.map(m => `<li>${esc(m)}</li>`).join('')}</ul>
+      <label>E-mail <input type="email" name="email" autocomplete="username" required></label>
+      <label>Senha (mínimo de 8 caracteres) <input type="password" name="senha" autocomplete="new-password" required></label>
+      <button type="submit" class="prim">Criar conta</button>
+      <p class="troca">Já tem conta? <button type="button" class="link" data-acao="ir-auth" data-view="entrar">Entrar</button></p>
+    </form></div></section></div>`;
+}
+
+// ---------- Tela inicial — painel (HU13, HU15) ----------
+function telaInicio() {
+  const h = hoje(), c = conf();
+  const abertos = emprestimosConta().filter(e => !e.encerramento);
+  // RN45/RN46 — vencem em breve, ordenados pela data limite
+  const breve = abertos.filter(e => prazoProximo(e, h, c)).sort((a, b) => a.dataLimite.localeCompare(b.dataLimite));
+  // RN48 — atrasados, do mais atrasado para o menos atrasado
+  const atrasados = abertos.filter(e => situacao(e, h, c) === 'Atrasado')
+    .sort((a, b) => diasAtrasoAberto(b, h, c) - diasAtrasoAberto(a, h, c));
+  const itemBreve = e => {
+    const txt = textoPainel(e, h, c);
+    const sufixo = emTolerancia(e, h, c) ? ` — ${esc(txt)}` : ` ${esc(txt)} (${fmt(e.dataLimite)})`;
+    return `<li><button type="button" class="link" data-acao="ir" data-view="emprestimo" data-id="${e.id}">${esc(nomeObjetoDe(e))} com ${esc(nomeContatoDe(e))}</button>${sufixo}</li>`;
+  };
+  const itemAtraso = e => `<li><button type="button" class="link" data-acao="ir" data-view="emprestimo" data-id="${e.id}">${esc(nomeObjetoDe(e))} com ${esc(nomeContatoDe(e))}</button> está atrasado há ${dias(diasAtrasoAberto(e, h, c))}</li>`;
+  return `<div class="cabeca"><h1>Início</h1>
+      <button type="button" class="prim" data-acao="novo-emprestimo">${ic('mais')}Novo empréstimo</button></div>
+    <div class="grade2 painel">
+      <section class="cartao breve" aria-labelledby="t-breve"><div class="cab-sec"><span class="ponto" aria-hidden="true"></span><h2 id="t-breve">Vencem em breve</h2><span class="contador" aria-label="${breve.length} na lista">${breve.length}</span></div>
+        ${breve.length ? `<ul>${breve.map(itemBreve).join('')}</ul>` : '<p class="vazio">Nenhum empréstimo vence nos próximos dias</p>'}
+      </section>
+      <section class="cartao atrasados" aria-labelledby="t-atr"><div class="cab-sec"><span class="ponto" aria-hidden="true"></span><h2 id="t-atr">Atrasados</h2><span class="contador" aria-label="${atrasados.length} na lista">${atrasados.length}</span></div>
+        ${atrasados.length ? `<ul>${atrasados.map(itemAtraso).join('')}</ul>` : '<p class="vazio">Nenhum empréstimo atrasado</p>'}
+      </section>
+    </div>
+    <p class="nota">O painel é calculado quando a tela é aberta ou recarregada (RN44).</p>`;
+}
+
+// ---------- HU02–HU05 — Objetos ----------
+function telaObjetos() {
+  let lista = objetosConta().slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  if (ui.filtroCategoria) lista = lista.filter(o => o.categoria === ui.filtroCategoria); // HU03 — filtro por categoria
+  // FORA DA ESPEC — busca por nome pedida pelo dono após o protótipo (não há HU/RN correspondente).
+  // LACUNA: a busca é "contém", sem diferenciar maiúsculas nem acentos, e combina com o filtro de categoria.
+  const termo = normalizarBusca(ui.buscaNome);
+  if (termo) lista = lista.filter(o => normalizarBusca(o.nome).includes(termo));
+  const filtrando = !!(termo || ui.filtroCategoria);
+  const linhas = lista.map(o => `<tr>
+      <td><button type="button" class="link" data-acao="ir" data-view="objeto" data-id="${o.id}">${esc(o.nome)}</button></td>
+      <td>${esc(o.categoria)}</td><td>${esc(o.estadoConservacao)}</td>
+      <td>${tagStatusObjeto(statusDe(o))}</td>
+      <td class="acoes"><button type="button" class="sec" data-acao="editar-objeto" data-id="${o.id}">Editar</button>
+        <button type="button" class="perigo" data-acao="excluir-objeto" data-id="${o.id}">Excluir</button></td></tr>`).join('');
+  return `<div class="cabeca"><h1>Objetos</h1>
+      <button type="button" class="prim" data-acao="novo-objeto">${ic('mais')}Novo objeto</button></div>
+    <div class="cartao tabela">
+      <div class="linha barra-filtros">
+        <label for="f-busca" class="busca">${ic('busca')}<span class="sr">Buscar por nome</span>
+          <input type="search" id="f-busca" data-busca-nome value="${esc(ui.buscaNome)}" placeholder="Buscar por nome" autocomplete="off"></label>
+        <label for="f-cat"><strong>Categoria</strong></label>
+        <select id="f-cat" class="filtro-cat" data-filtro-categoria>${opcoes(CATEGORIAS, ui.filtroCategoria, 'Todas as categorias')}</select>
+      </div>
+      ${lista.length ? `<table><thead><tr><th scope="col">Nome</th><th scope="col">Categoria</th><th scope="col">Estado de conservação</th><th scope="col">Status</th><th scope="col" style="text-align:right">Ações</th></tr></thead><tbody>${linhas}</tbody></table>`
+        // LACUNA (HU03): mensagens de lista de objetos vazia e de busca sem resultado não definidas.
+        : filtrando ? '<p class="vazio">Nenhum objeto encontrado para a busca e o filtro escolhidos</p>' : '<p class="vazio">Nenhum objeto cadastrado</p>'}
+    </div>`;
+}
+
+function telaObjeto() { // HU14 — detalhe e histórico do objeto
+  const o = objeto(ui.id);
+  if (!o) { ui.view = 'objetos'; return telaObjetos(); }
+  const st = statusDe(o), h = hoje(), c = conf();
+  const emps = ordenarRecentes(empsDoObjeto(o.id)); // RN50
+  const item = e => { // RN51
+    const sit = situacao(e, h, c);
+    const sitTxt = e.encerramento ? e.encerramento : `Em aberto (${situacaoFiltro(sit)})`;
+    // LACUNA (RN51): "data de encerramento" de não devolvido não definida; mostrada a data em que deveria ter sido devolvido (RN52).
+    const encerramento = e.encerramento === 'Devolvido' ? fmt(e.dataDevolucao) : e.encerramento === 'Não devolvido' ? `${fmt(e.dataPrevistaDevolucao)} (data em que deveria ter sido devolvido)` : '—';
+    const rens = renovacoesDe(e.id);
+    const linhasExtras = [];
+    if (textoLivre(e, 'observacao')) linhasExtras.push(['Observações', textoLivre(e, 'observacao')]);
+    if (e.solicitadaPeloDono || (e.textosRemovidos || []).includes('justificativa')) linhasExtras.push(['Justificativa (solicitada pelo dono)', textoLivre(e, 'justificativa')]);
+    if (e.encerramento === 'Não devolvido') linhasExtras.push(['Motivo da não devolução', textoLivre(e, 'motivoNaoDevolucao')]);
+    return `<li>
+      <div class="linha entre"><h3 style="margin:0">${esc(nomeContatoDe(e))}</h3>
+        <div class="linha">${tagSituacao(e)}<button type="button" class="link" data-acao="ir" data-view="emprestimo" data-id="${e.id}">Abrir empréstimo</button></div></div>
+      <dl class="dados" style="margin-top:8px">
+        <dt>Data do empréstimo</dt><dd>${fmt(e.dataEmprestimo)}</dd>
+        <dt>Data limite final</dt><dd>${fmt(e.dataLimite)}</dd>
+        <dt>Data de encerramento</dt><dd>${encerramento}</dd>
+        <dt>Situação</dt><dd>${esc(sitTxt)}</dd>
+        <dt>Tempo emprestado</dt><dd>${dias(tempoEmprestado(e, h))}</dd>
+        <dt>Houve atraso</dt><dd>${esc(houveAtraso(e, h, c))}</dd>
+        <dt>Estado na saída / no retorno</dt><dd>${esc(e.estadoSaida)} / ${esc(e.estadoRetorno || '—')}</dd>
+        <dt>Renovações</dt><dd>${rens.length ? rens.map(r => `${fmt(r.dataRenovacao)}: +${dias(r.diasAdicionais)} (${fmt(r.dataLimiteAnterior)} → ${fmt(r.dataLimiteNova)})`).join('<br>') : 'Nenhuma'}</dd>
+        ${linhasExtras.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}
+      </dl></li>`;
+  };
+  return `<p class="voltar"><button type="button" class="link linha" data-acao="ir" data-view="objetos">${ic('voltar')}Objetos</button></p>
+    <div class="cartao">
+      <div class="linha entre"><h1>${esc(o.nome)}</h1>
+        <div class="linha">
+          ${st.status === 'Disponível' ? `<button type="button" class="prim" data-acao="novo-emprestimo" data-objeto="${o.id}">Emprestar</button>` : ''}
+          <button type="button" class="sec" data-acao="editar-objeto" data-id="${o.id}">Editar</button>
+          <button type="button" class="perigo" data-acao="excluir-objeto" data-id="${o.id}">Excluir</button></div></div>
+      <dl class="dados">
+        <dt>Categoria</dt><dd>${esc(o.categoria)}</dd>
+        <dt>Estado de conservação</dt><dd>${esc(o.estadoConservacao)}</dd>
+        <dt>Status</dt><dd>${tagStatusObjeto(st)}</dd>
+      </dl></div>
+    <h2>Histórico</h2>
+    ${emps.length ? `<ul class="historico">${emps.map(item).join('')}</ul>` : '<p class="vazio">Este objeto ainda não foi emprestado</p>'}`;
+}
+
+function formObjeto(o) {
+  return `<label>Nome <input type="text" name="nome" maxlength="100" value="${esc(o ? o.nome : '')}"></label>
+    <label>Categoria <select name="categoria">${opcoes(CATEGORIAS, o ? o.categoria : '')}</select></label>
+    <label>Estado de conservação <select name="estadoConservacao">${opcoes(ESTADOS, o ? o.estadoConservacao : '')}</select></label>`;
+}
+function modalObjeto(id) { // HU02, HU04
+  const o = id ? objeto(id) : null;
+  abrirModal({
+    titulo: o ? 'Editar objeto' : 'Novo objeto', corpo: formObjeto(o),
+    aoEnviar(d) {
+      const erros = validarObjeto(d);
+      if (erros.length) return erros; // nada é salvo
+      const dados = { nome: d.nome.trim(), categoria: d.categoria, estadoConservacao: d.estadoConservacao, atualizadoEm: carimbo() };
+      // RN19: editar o objeto não altera o estadoSaida já gravado nos empréstimos.
+      if (o) Object.assign(o, dados);
+      else db.objetos.push(Object.assign({ id: novoId('obj'), contaId: db.sessao, criadoEm: carimbo() }, dados));
+      salvar(); ui.aviso = null;
+    },
+  });
+}
+function excluirObjeto(id) { // HU05
+  const o = objeto(id);
+  if (statusDe(o).status === 'Emprestado') return avisar('Este objeto está emprestado e não pode ser excluído'); // RN09
+  // LACUNA (HU05): texto da confirmação de exclusão de objeto não definido.
+  if (!confirm(`Excluir o objeto "${o.nome}"? O histórico de empréstimos dele também será excluído.`)) return;
+  const ids = new Set(empsDoObjeto(id).map(e => e.id));
+  db.emprestimos = db.emprestimos.filter(e => !ids.has(e.id)); // RN56 — o histórico sai junto
+  db.renovacoes = db.renovacoes.filter(r => !ids.has(r.emprestimoId));
+  db.objetos = db.objetos.filter(x => x.id !== id);
+  salvar(); ir('objetos');
+}
+
+// ---------- HU06–HU07 — Contatos ----------
+function telaContatos() {
+  const lista = contatosConta().slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const linhas = lista.map(k => {
+    const abertos = empsDoContato(k.id).filter(e => !e.encerramento).length;
+    const atraso = contatoTemAtraso(k.id);
+    return `<tr><td><strong>${esc(k.nome)}</strong>${k.observacao ? `<div class="suave pequeno">${esc(k.observacao)}</div>` : ''}</td>
+      <td>${esc(k.telefone || '—')}</td><td>${esc(k.email || '—')}</td>
+      <td>${abertos ? (abertos === 1 ? '1 empréstimo em aberto' : `${abertos} empréstimos em aberto`) : 'Nenhum empréstimo em aberto'}
+        ${atraso ? '<br><span class="tag atrasado">Com empréstimo atrasado</span>' : ''}</td>
+      <td class="acoes"><button type="button" class="sec" data-acao="editar-contato" data-id="${k.id}">Editar</button>
+        <button type="button" class="perigo" data-acao="excluir-contato" data-id="${k.id}">Excluir</button></td></tr>`;
+  }).join('');
+  return `<div class="cabeca"><h1>Contatos</h1>
+      <button type="button" class="prim" data-acao="novo-contato">${ic('mais')}Novo contato</button></div>
+    <div class="cartao tabela">${lista.length ? `<table><thead><tr><th scope="col">Nome</th><th scope="col">Telefone</th><th scope="col">E-mail</th><th scope="col">Empréstimos</th><th scope="col" style="text-align:right">Ações</th></tr></thead><tbody>${linhas}</tbody></table>`
+      : '<p class="vazio">Nenhum contato cadastrado</p>'}</div>`; // LACUNA (HU06): mensagem de lista vazia não definida
+}
+function modalContato(id) { // HU06, HU07
+  const k = id ? contato(id) : null;
+  abrirModal({
+    titulo: k ? 'Editar contato' : 'Novo contato',
+    corpo: `<label>Nome <input type="text" name="nome" maxlength="100" value="${esc(k ? k.nome : '')}"></label>
+      <label>Telefone (opcional) <input type="tel" name="telefone" value="${esc(k ? k.telefone : '')}" placeholder="(11) 98888-7777"></label>
+      <label>E-mail (opcional) <input type="email" name="email" value="${esc(k ? k.email : '')}"></label>
+      <label>Observação (opcional) <textarea name="observacao" maxlength="500">${esc(k ? k.observacao : '')}</textarea></label>`,
+    aoEnviar(d) {
+      const erros = validarContato(d); // RN12
+      if (erros.length) return erros;
+      const dados = { nome: d.nome.trim(), telefone: (d.telefone || '').trim(), email: (d.email || '').trim(), observacao: d.observacao || '' };
+      // LACUNA (RN12): a spec não trata nomes de contato repetidos; são permitidos.
+      if (k) Object.assign(k, dados);
+      else db.contatos.push(Object.assign({ id: novoId('ctt'), contaId: db.sessao }, dados));
+      salvar(); ui.aviso = null;
+    },
+  });
+}
+function excluirContato(id) { // HU07
+  const k = contato(id);
+  const emps = empsDoContato(id);
+  if (emps.some(e => !e.encerramento)) return avisar('Este contato tem empréstimo em aberto e não pode ser excluído'); // RN11
+  // HU07 / Seção 10 (LGPD): a confirmação informa o que será apagado. LACUNA: texto exato não definido.
+  const msg = emps.length
+    ? `Excluir o contato "${k.nome}"? Os empréstimos encerrados dele continuam no histórico dos objetos como "Contato removido", e as observações, justificativas e motivos desses empréstimos serão apagados.`
+    : `Excluir o contato "${k.nome}"?`;
+  if (!confirm(msg)) return;
+  emps.forEach(e => { // RN54, RN55
+    e.contatoId = null;
+    e.textosRemovidos = e.textosRemovidos || [];
+    ['observacao', 'justificativa', 'motivoNaoDevolucao'].forEach(campo => {
+      // LACUNA (RN55): campos que já estavam vazios continuam vazios (o aviso só aparece onde havia texto).
+      if (e[campo]) { e[campo] = null; if (!e.textosRemovidos.includes(campo)) e.textosRemovidos.push(campo); }
+    });
+  });
+  db.contatos = db.contatos.filter(x => x.id !== id);
+  salvar(); ir('contatos');
+}
+
+// ---------- HU12 — Lista de empréstimos ----------
+function telaEmprestimos() {
+  if (!ui.filtros) ui.filtros = { Vigente: true, Atrasado: true, Encerrado: false }; // RN43
+  const h = hoje(), c = conf();
+  const lista = emprestimosConta()
+    .filter(e => ui.filtros[situacaoFiltro(situacao(e, h, c))])
+    .sort((a, b) => a.dataLimite.localeCompare(b.dataLimite)); // RN43 — data limite mais próxima primeiro
+  const prazo = e => {
+    if (!e.encerramento) return `${fmt(e.dataLimite)} — ${esc(textoPrazo(e, h, c))}`; // RN23, RN28
+    if (e.encerramento === 'Devolvido') return `${fmt(e.dataLimite)} — devolvido em ${fmt(e.dataDevolucao)}${e.diasAtrasoDevolucao > 0 ? `, com atraso de ${dias(e.diasAtrasoDevolucao)}` : ''}`;
+    return `${fmt(e.dataLimite)} — deveria ter sido devolvido em ${fmt(e.dataPrevistaDevolucao)}`;
+  };
+  const linhas = lista.map(e => `<tr>
+      <td><button type="button" class="link" data-acao="ir" data-view="emprestimo" data-id="${e.id}">${esc(nomeObjetoDe(e))}</button></td>
+      <td>${esc(nomeContatoDe(e))}</td><td>${fmt(e.dataEmprestimo)}</td><td>${prazo(e)}</td><td>${tagSituacao(e)}</td></tr>`).join('');
+  const chk = s => `<label class="check"><input type="checkbox" data-filtro="${s}"${ui.filtros[s] ? ' checked' : ''}> ${s}</label>`;
+  return `<div class="cabeca"><h1>Empréstimos</h1>
+      <button type="button" class="prim" data-acao="novo-emprestimo">${ic('mais')}Novo empréstimo</button></div>
+    <div class="cartao tabela">
+      <form novalidate class="barra-filtros"><fieldset class="filtro-situacao"><legend>Situação</legend>
+        ${chk('Vigente')}${chk('Atrasado')}${chk('Encerrado')}</fieldset></form>
+      ${lista.length ? `<table><thead><tr><th scope="col">Objeto</th><th scope="col">Contato</th><th scope="col">Data do empréstimo</th><th scope="col">Data limite</th><th scope="col">Situação</th></tr></thead><tbody>${linhas}</tbody></table>`
+        : '<p class="vazio">Nenhum empréstimo encontrado para os filtros selecionados</p>'}
+    </div>`;
+}
+
+// ---------- Detalhe do empréstimo (HU09, HU10, HU11, HU17, RN21) ----------
+function telaEmprestimo() {
+  const e = emprestimo(ui.id);
+  if (!e) { ui.view = 'emprestimos'; return telaEmprestimos(); }
+  const h = hoje(), c = conf(), sit = situacao(e, h, c), aberto = !e.encerramento;
+  const rens = renovacoesDe(e.id);
+  let acoes = '';
+  if (sit === 'Ativo') acoes += `<button type="button" class="prim" data-acao="renovar" data-id="${e.id}">Renovar</button>`; // RN29
+  if (aberto) acoes += `<button type="button" class="sec" data-acao="devolver" data-id="${e.id}">Registrar devolução</button>
+      <button type="button" class="sec" data-acao="perder" data-id="${e.id}">Registrar perda/não devolução</button>`; // RN32, RN38
+  acoes += `<button type="button" class="perigo" data-acao="excluir-emprestimo" data-id="${e.id}">Excluir empréstimo</button>`; // RN60
+  const encerramento = e.encerramento === 'Devolvido' ? `
+      <dt>Data de devolução</dt><dd>${fmt(e.dataDevolucao)}</dd>
+      <dt>Estado no retorno</dt><dd>${esc(e.estadoRetorno)}</dd>
+      <dt>Atraso</dt><dd>${e.diasAtrasoDevolucao > 0 ? `Devolvido com atraso de ${dias(e.diasAtrasoDevolucao)}` : 'Sem atraso'}</dd>
+      ${e.solicitadaPeloDono || (e.textosRemovidos || []).includes('justificativa') ? `<dt>Solicitada pelo dono</dt><dd>${esc(textoLivre(e, 'justificativa'))}</dd>` : ''}`
+    : e.encerramento === 'Não devolvido' ? `
+      <dt>Deveria ter sido devolvido em</dt><dd>${fmt(e.dataPrevistaDevolucao)}</dd>
+      <dt>Motivo</dt><dd>${esc(textoLivre(e, 'motivoNaoDevolucao'))}</dd>` : '';
+  const obs = aberto // RN21 — observação editável enquanto em aberto
+    ? `<form data-form="observacao" data-id="${e.id}" novalidate>
+         <label>Observação <textarea name="observacao" maxlength="500">${esc(e.observacao || '')}</textarea></label>
+         <button type="submit" class="sec">Salvar observação</button></form>`
+    : `<dl class="dados"><dt>Observação</dt><dd>${esc(textoLivre(e, 'observacao')) || '—'}</dd></dl>`;
+  return `<p class="voltar"><button type="button" class="link linha" data-acao="ir" data-view="emprestimos">${ic('voltar')}Empréstimos</button></p>
+    <div class="cartao">
+      <div class="linha entre"><h1>${esc(nomeObjetoDe(e))} com ${esc(nomeContatoDe(e))}</h1>${tagSituacao(e)}</div>
+      <div class="linha" style="margin:16px 0 26px">${acoes}</div>
+      ${sit === 'Atrasado' ? '<p class="aviso erro">Empréstimos atrasados não podem ser renovados</p>' : ''}
+      <dl class="dados">
+        <dt>Objeto</dt><dd><button type="button" class="link" data-acao="ir" data-view="objeto" data-id="${e.objetoId}">${esc(nomeObjetoDe(e))}</button></dd>
+        <dt>Contato</dt><dd>${esc(nomeContatoDe(e))}</dd>
+        <dt>Data do empréstimo</dt><dd>${fmt(e.dataEmprestimo)}</dd>
+        <dt>Prazo original</dt><dd>${dias(e.prazoDias)}</dd>
+        <dt>Data limite</dt><dd>${fmt(e.dataLimite)}${aberto ? ` — ${esc(textoPrazo(e, h, c))}` : ''}</dd>
+        <dt>Estado na saída</dt><dd>${esc(e.estadoSaida)}</dd>
+        <dt>Situação</dt><dd>${esc(aberto ? situacaoFiltro(sit) : sit)}</dd>
+        ${encerramento}
+      </dl></div>
+    <div class="cartao">${obs}</div>
+    <div class="cartao"><h2>Renovações</h2>
+      ${rens.length ? `<table><thead><tr><th scope="col">Data da renovação</th><th scope="col">Dias adicionados</th><th scope="col">Data limite anterior</th><th scope="col">Nova data limite</th></tr></thead><tbody>
+        ${rens.map(r => `<tr><td>${fmt(r.dataRenovacao)}</td><td>${r.diasAdicionais}</td><td>${fmt(r.dataLimiteAnterior)}</td><td>${fmt(r.dataLimiteNova)}</td></tr>`).join('')}</tbody></table>`
+        : '<p class="vazio">Nenhuma renovação</p>'}</div>`;
+}
+
+// HU08 — novo empréstimo
+function modalEmprestimo(objetoIdInicial) {
+  const h = hoje();
+  const disponiveis = objetosConta().filter(o => statusDe(o).status === 'Disponível') // RN14: emprestado e extraviado não aparecem
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  const contatos = contatosConta().slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+  abrirModal({
+    titulo: 'Novo empréstimo', botao: 'Registrar empréstimo',
+    corpo: `<label>Objeto <select name="objetoId"><option value="">Selecione</option>
+        ${disponiveis.map(o => `<option value="${o.id}"${o.id === objetoIdInicial ? ' selected' : ''}>${esc(o.nome)} (${esc(o.estadoConservacao)})</option>`).join('')}</select></label>
+      ${disponiveis.length ? '' : '<p class="suave pequeno">Nenhum objeto disponível para empréstimo.</p>'}
+      <label>Contato <select name="contatoId"><option value="">Selecione</option>
+        ${contatos.map(k => `<option value="${k.id}">${esc(k.nome)}</option>`).join('')}</select></label>
+      <p class="alerta-contato" id="alerta-contato" role="alert"></p>
+      <label>Data do empréstimo <input type="date" name="dataEmprestimo" value="${h}" max="${h}"></label>
+      <label>Prazo em dias <input type="number" name="prazoDias" min="1" step="1" inputmode="numeric"></label>
+      <p class="previa" id="previa" aria-live="polite"></p>
+      <label>Observação (opcional) <textarea name="observacao" maxlength="500" placeholder="Ex.: vou precisar de volta no dia 10"></textarea></label>`,
+    aoAlterar(d, form) {
+      // RN20 — aviso imediato ao escolher contato com atraso; não deixa salvar
+      const atrasado = d.contatoId && contatoTemAtraso(d.contatoId);
+      form.querySelector('#alerta-contato').textContent = atrasado ? `${contato(d.contatoId).nome} tem empréstimo atrasado e não pode receber novos empréstimos` : '';
+      form.querySelector('button[type=submit]').disabled = !!atrasado;
+      // RN23 — data limite e dias faltantes assim que o prazo é preenchido
+      const ok = isoValida(d.dataEmprestimo) && inteiroMinimo1(d.prazoDias);
+      const dl = ok ? somarDias(d.dataEmprestimo, parseInt(d.prazoDias, 10)) : null; // RN18
+      form.querySelector('#previa').textContent = dl ? `Data limite: ${fmt(dl)} — ${textoPrazo({ dataLimite: dl, encerramento: null }, hoje(), conf())}` : '';
+    },
+    aoEnviar(d) {
+      const o = d.objetoId ? objeto(d.objetoId) : null;
+      const k = d.contatoId ? contato(d.contatoId) : null;
+      const erros = validarEmprestimo(d, {
+        hoje: hoje(), statusObjeto: o ? statusDe(o).status : null,
+        contatoAtrasado: k ? contatoTemAtraso(k.id) : false, nomeContato: k ? k.nome : '',
+        ultimaDevolucao: o ? ultimaDevolucao(empsDoObjeto(o.id)) : null, // RN16
+      });
+      if (erros.length) return erros;
+      const prazo = parseInt(d.prazoDias, 10);
+      db.emprestimos.push({
+        id: novoId('emp'), objetoId: o.id, contatoId: k.id, dataEmprestimo: d.dataEmprestimo, prazoDias: prazo,
+        dataLimite: somarDias(d.dataEmprestimo, prazo), // RN18
+        estadoSaida: o.estadoConservacao, // RN19
+        observacao: d.observacao || '', encerramento: null, dataDevolucao: null, estadoRetorno: null, solicitadaPeloDono: false,
+        justificativa: null, dataPrevistaDevolucao: null, motivoNaoDevolucao: null, diasAtrasoDevolucao: null,
+        encerradoEm: null, textosRemovidos: [], criadoEm: carimbo(),
+      });
+      salvar(); ui.aviso = { msg: `Empréstimo de ${o.nome} para ${k.nome} registrado.`, tipo: 'ok' };
+    },
+  });
+}
+
+function modalRenovar(id) { // HU09
+  const e = emprestimo(id);
+  abrirModal({
+    titulo: `Renovar — ${nomeObjetoDe(e)}`, botao: 'Renovar',
+    corpo: `<p>Data limite atual: <strong>${fmt(e.dataLimite)}</strong></p>
+      <label>Dias adicionais <input type="number" name="diasAdicionais" min="1" step="1" inputmode="numeric"></label>
+      <p class="previa" id="previa" aria-live="polite"></p>`,
+    aoAlterar(d, form) {
+      form.querySelector('#previa').textContent = inteiroMinimo1(d.diasAdicionais) ? `Nova data limite: ${fmt(somarDias(e.dataLimite, parseInt(d.diasAdicionais, 10)))}` : '';
+    },
+    aoEnviar(d) {
+      const erros = validarRenovacao(d, situacao(e, hoje(), conf())); // RN29, RN30
+      if (erros.length) return erros;
+      const n = parseInt(d.diasAdicionais, 10);
+      const nova = somarDias(e.dataLimite, n); // RN30: data limite atual + N
+      db.renovacoes.push({ id: novoId('ren'), emprestimoId: e.id, dataRenovacao: hoje(), diasAdicionais: n, dataLimiteAnterior: e.dataLimite, dataLimiteNova: nova }); // RN31
+      e.dataLimite = nova;
+      salvar(); ui.aviso = { msg: `Empréstimo renovado até ${fmt(nova)}.`, tipo: 'ok' };
+    },
+  });
+}
+
+function modalDevolucao(id) { // HU10
+  const e = emprestimo(id);
+  abrirModal({
+    titulo: `Registrar devolução — ${nomeObjetoDe(e)}`, botao: 'Registrar devolução',
+    corpo: `<label>Data de devolução <input type="date" name="dataDevolucao" value="${hoje()}" max="${hoje()}"></label>
+      <label>Estado de conservação no retorno <select name="estadoRetorno">${opcoes(ESTADOS, '')}</select></label>
+      <p class="suave pequeno">Estado na saída: ${esc(e.estadoSaida)}</p>
+      <p class="previa" id="previa" aria-live="polite"></p>
+      <label class="check"><input type="checkbox" name="solicitadaPeloDono"> Solicitada pelo dono</label>
+      <label id="campo-just" hidden>Justificativa <textarea name="justificativa" maxlength="500"></textarea></label>`,
+    aoAlterar(d, form) {
+      // LACUNA (RN37): a spec não diz se "Solicitada pelo dono" só aparece antes da data limite; a opção fica sempre disponível.
+      form.querySelector('#campo-just').hidden = !d.solicitadaPeloDono;
+      const ok = isoValida(d.dataDevolucao) && d.dataDevolucao >= e.dataEmprestimo && d.dataDevolucao <= hoje();
+      const atraso = ok ? diasAtrasoDevolucao(d.dataDevolucao, e.dataLimite, conf()) : null; // RN36
+      form.querySelector('#previa').textContent = ok ? (atraso > 0 ? `Devolução com atraso de ${dias(atraso)}` : 'Devolução sem atraso') : '';
+    },
+    aoEnviar(d) {
+      const erros = validarDevolucao(d, e, hoje()); // RN32–RN34, RN37
+      if (erros.length) return erros;
+      if (e.encerramento) return ['Só um empréstimo em aberto pode ter devolução registrada']; // RN32 — LACUNA: mensagem não definida
+      Object.assign(e, {
+        encerramento: 'Devolvido', dataDevolucao: d.dataDevolucao, estadoRetorno: d.estadoRetorno,
+        solicitadaPeloDono: !!d.solicitadaPeloDono, justificativa: d.solicitadaPeloDono ? d.justificativa.trim() : null,
+        diasAtrasoDevolucao: diasAtrasoDevolucao(d.dataDevolucao, e.dataLimite, conf()), // RN36 — gravado no registro
+        encerradoEm: carimbo(),
+      });
+      const o = objeto(e.objetoId);
+      o.estadoConservacao = d.estadoRetorno; o.atualizadoEm = carimbo(); // RN35
+      salvar(); ui.aviso = { msg: `Devolução de ${o.nome} registrada.`, tipo: 'ok' };
+    },
+  });
+}
+
+function modalNaoDevolucao(id) { // HU11
+  const e = emprestimo(id);
+  abrirModal({
+    titulo: `Registrar perda/não devolução — ${nomeObjetoDe(e)}`, botao: 'Registrar não devolução',
+    corpo: `<label>Data em que o objeto deveria ter sido devolvido <input type="date" name="dataPrevista" value="${e.dataLimite}"></label>
+      <label>Motivo <textarea name="motivo" maxlength="500"></textarea></label>
+      <p class="suave pequeno">O objeto passará ao status "Extraviado" e não poderá mais ser emprestado.</p>`,
+    aoEnviar(d) {
+      const erros = validarNaoDevolucao(d, e); // RN39, RN40
+      if (erros.length) return erros;
+      if (e.encerramento) return ['Só um empréstimo em aberto pode ser registrado como não devolvido']; // RN38 — LACUNA: mensagem não definida
+      // LACUNA (RN39/RN40): a spec não limita a data em que deveria ter sido devolvido a hoje; data futura é aceita.
+      Object.assign(e, { encerramento: 'Não devolvido', dataPrevistaDevolucao: d.dataPrevista, motivoNaoDevolucao: d.motivo.trim(), encerradoEm: carimbo() }); // RN41
+      salvar(); ui.aviso = { msg: `${nomeObjetoDe(e)} registrado como não devolvido.`, tipo: 'ok' };
+    },
+  });
+}
+
+function excluirEmprestimo(id) { // HU17
+  const e = emprestimo(id);
+  // RN60 — confirmação com o texto da especificação
+  if (!confirm(`Excluir o empréstimo de ${nomeObjetoDe(e)} para ${nomeContatoDe(e)}? Ele sai do histórico e não pode ser recuperado.`)) return;
+  db.emprestimos = db.emprestimos.filter(x => x.id !== id);
+  db.renovacoes = db.renovacoes.filter(r => r.emprestimoId !== id); // RN60 — renovações saem junto
+  // RN61 — status, bloqueio, RN16, painel e histórico são calculados, então se ajustam sozinhos.
+  // RN62 — o estado de conservação atual do objeto não é alterado.
+  salvar();
+  const voltar = ui.view === 'emprestimo' ? 'emprestimos' : ui.view;
+  ir(voltar, ui.view === 'objeto' ? ui.id : null);
+  avisar('Empréstimo excluído.', 'ok');
+}
+
+// ---------- HU16 — Pontos facultativos ----------
+function telaConfig() {
+  const conta = contaAtual();
+  const ano = Number(hoje().slice(0, 4));
+  const pf = pontosFacultativos(ano);
+  const d = iso => fmt(iso).slice(0, 5);
+  return `<div class="cabeca"><h1>Configurações</h1></div>
+    <div class="cartao" style="max-width:640px">
+      <h2>Pontos facultativos</h2>
+      <p class="suave">Marque os pontos facultativos que contam como dias não úteis para a tolerância do vencimento.
+        Feriados nacionais sempre contam como dias não úteis.</p>
+      <form data-form="config" novalidate>
+        <label class="check"><input type="checkbox" name="carnaval"${conta.carnaval ? ' checked' : ''}> Carnaval (segunda e terça) <span class="suave pequeno">— em ${ano}: ${d(pf.carnaval[0])} e ${d(pf.carnaval[1])}</span></label>
+        <label class="check"><input type="checkbox" name="cinzas"${conta.cinzas ? ' checked' : ''}> Quarta-feira de Cinzas <span class="suave pequeno">— em ${ano}: ${d(pf.cinzas[0])}</span></label>
+        <label class="check"><input type="checkbox" name="corpusChristi"${conta.corpusChristi ? ' checked' : ''}> Corpus Christi <span class="suave pequeno">— em ${ano}: ${d(pf.corpusChristi[0])}</span></label>
+        <p class="suave pequeno">A alteração vale na hora para os empréstimos em aberto; devoluções já registradas mantêm os dias de atraso gravados.</p>
+        <button type="submit" class="prim">Salvar</button>
+      </form>
+    </div>`;
+}
+
+// ---------- Modal genérico ----------
+let _focoAnterior = null;
+function abrirModal({ titulo, corpo, botao = 'Salvar', aoEnviar, aoAlterar }) {
+  _focoAnterior = document.activeElement;
+  const raiz = document.getElementById('modal-raiz');
+  raiz.innerHTML = `<div class="fundo"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-titulo">
+      <h2 id="modal-titulo">${esc(titulo)}</h2>
+      <form novalidate><ul class="erros" role="alert"></ul>${corpo}
+        <div class="botoes"><button type="button" class="sec" data-fechar>Cancelar</button><button type="submit" class="prim">${esc(botao)}</button></div>
+      </form></div></div>`;
+  const form = raiz.querySelector('form');
+  const dados = () => Object.fromEntries(new FormData(form));
+  form.addEventListener('submit', ev => {
+    ev.preventDefault();
+    const erros = aoEnviar(dados(), form);
+    if (erros && erros.length) { // "nada é salvo"
+      form.querySelector('.erros').innerHTML = erros.map(m => `<li>${esc(m)}</li>`).join('');
+      return;
+    }
+    fecharModal(); render();
+  });
+  if (aoAlterar) { const f = () => aoAlterar(dados(), form); form.addEventListener('input', f); form.addEventListener('change', f); f(); }
+  raiz.querySelector('[data-fechar]').addEventListener('click', fecharModal);
+  raiz.querySelector('.fundo').addEventListener('keydown', ev => { if (ev.key === 'Escape') fecharModal(); });
+  const primeiro = form.querySelector('input, select, textarea');
+  if (primeiro) primeiro.focus();
+}
+function fecharModal() {
+  document.getElementById('modal-raiz').innerHTML = '';
+  if (_focoAnterior && document.contains(_focoAnterior)) _focoAnterior.focus();
+}
+
+// ---------- Eventos ----------
+const acoes = {
+  'ir': ds => ir(ds.view, ds.id || null),
+  'ir-auth': ds => { ui.view = ds.view; ui.erroAuth = []; render(); },
+  'sair': () => { db.sessao = null; salvar(); ui.view = 'entrar'; ui.erroAuth = []; render(); }, // HU01 — sair
+  'sim-mais': ds => { db.offsetDias = (db.offsetDias || 0) + Number(ds.dias); salvar(); render(); },
+  'sim-hoje': () => { db.offsetDias = 0; salvar(); render(); },
+  'restaurar': () => {
+    if (!confirm('Apagar todos os dados deste navegador e recriar os dados de exemplo a partir da data simulada?')) return;
+    const off = db.offsetDias || 0;
+    db = criarDadosExemplo(hoje(), off); salvar(); ir('inicio');
+  },
+  'novo-objeto': () => modalObjeto(null),
+  'editar-objeto': ds => modalObjeto(ds.id),
+  'excluir-objeto': ds => excluirObjeto(ds.id),
+  'novo-contato': () => modalContato(null),
+  'editar-contato': ds => modalContato(ds.id),
+  'excluir-contato': ds => excluirContato(ds.id),
+  'novo-emprestimo': ds => modalEmprestimo(ds.objeto || null),
+  'renovar': ds => modalRenovar(ds.id),
+  'devolver': ds => modalDevolucao(ds.id),
+  'perder': ds => modalNaoDevolucao(ds.id),
+  'excluir-emprestimo': ds => excluirEmprestimo(ds.id),
+};
+document.addEventListener('click', ev => {
+  const el = ev.target.closest('[data-acao]');
+  if (el && acoes[el.dataset.acao]) acoes[el.dataset.acao](el.dataset, ev);
+});
+document.addEventListener('change', ev => {
+  const el = ev.target;
+  if (el.matches('[data-filtro]')) { ui.filtros[el.dataset.filtro] = el.checked; render(); document.querySelector(`[data-filtro="${el.dataset.filtro}"]`).focus(); } // RN43
+  if (el.matches('[data-filtro-categoria]')) { ui.filtroCategoria = el.value; render(); document.getElementById('f-cat').focus(); } // HU03
+});
+document.addEventListener('input', ev => { // FORA DA ESPEC — busca por nome na lista de objetos
+  const el = ev.target;
+  if (!el.matches('[data-busca-nome]')) return;
+  const pos = el.selectionStart;
+  ui.buscaNome = el.value; render();
+  const novo = document.getElementById('f-busca');
+  novo.focus(); novo.setSelectionRange(pos, pos);
+});
+
+const formularios = {
+  entrar(d) { // HU01, RN04
+    const email = String(d.email || '').trim().toLowerCase();
+    const conta = db.contas.find(c => c.email === email);
+    if (!conta || conta.senhaHash !== sha256(conta.sal + (d.senha || ''))) { ui.erroAuth = ['E-mail ou senha incorretos']; render(); return; }
+    db.sessao = conta.id; salvar(); ir('inicio');
+  },
+  criar(d) { // HU01, RN02, RN58
+    const erros = validarConta(d, db.contas.map(c => c.email));
+    if (erros.length) { ui.erroAuth = erros; render(); return; } // nada é salvo
+    const sal = Math.random().toString(36).slice(2, 12);
+    const conta = { id: novoId('conta'), email: d.email.trim().toLowerCase(), sal, senhaHash: sha256(sal + d.senha),
+                    carnaval: CONF_SUGERIDA.carnaval, cinzas: CONF_SUGERIDA.cinzas, corpusChristi: CONF_SUGERIDA.corpusChristi, criadoEm: carimbo() };
+    db.contas.push(conta); db.sessao = conta.id; salvar(); ir('inicio'); // tela inicial vazia
+  },
+  config(d) { // HU16, RN57, RN59
+    const conta = contaAtual();
+    conta.carnaval = !!d.carnaval; conta.cinzas = !!d.cinzas; conta.corpusChristi = !!d.corpusChristi;
+    salvar(); avisar('Configuração salva. Os empréstimos em aberto foram recalculados.', 'ok');
+  },
+  observacao(d, form) { // RN21
+    const e = emprestimo(form.dataset.id);
+    if (!e || e.encerramento) return;
+    if (String(d.observacao || '').length > 500) return avisar('A observação deve ter até 500 caracteres'); // LACUNA: mensagem não definida
+    e.observacao = d.observacao || ''; salvar(); avisar('Observação salva.', 'ok');
+  },
+};
+document.addEventListener('submit', ev => {
+  const f = ev.target;
+  if (!f.dataset || !f.dataset.form) return;
+  ev.preventDefault();
+  formularios[f.dataset.form](Object.fromEntries(new FormData(f)), f);
+});
+
+// ---------- Rodapé com o resultado dos testes de aceite ----------
+const CASOS_TESTE = executarTestes();
+CASOS_TESTE.forEach(c => (c.ok ? console.log : console.error)(`[teste] ${c.ok ? 'ok' : 'FALHOU'} — ${c.nome}`, c.ok ? '' : { obtido: c.obtido, esperado: c.esperado }));
+function rodapeHtml() {
+  const casos = CASOS_TESTE, falhas = casos.filter(c => !c.ok);
+  return `<footer class="rodape" id="rodape"><details><summary>Testes de aceite das regras de data (seção 10):
+      <span class="${falhas.length ? 'falhou' : ''}">${casos.length - falhas.length} de ${casos.length} aprovados</span></summary>
+    <ul>${casos.map(c => `<li>${c.ok ? 'ok' : '<span class="falhou">FALHOU</span>'} — ${esc(c.nome)}${c.ok ? '' : ` — obtido ${esc(JSON.stringify(c.obtido))}, esperado ${esc(JSON.stringify(c.esperado))}`}</li>`).join('')}</ul></details></footer>`;
+}
+
+if (!contaAtual()) ui.view = 'entrar';
+salvar();
+render();
+</script>
+</body>
+</html>
