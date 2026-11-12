@@ -83,6 +83,23 @@
   .lateral .conta { margin-top: auto; border-top: 1px solid var(--borda); padding: 14px 10px 0; display: flex; flex-direction: column; gap: 10px; }
   .lateral .conta .email { font-size: 13px; color: var(--suave); overflow-wrap: anywhere; }
   .lateral .conta button { align-self: flex-start; }
+  .lateral .alternar { margin-top: auto; margin-bottom: 10px; display: flex; align-items: center; gap: 12px; background: none; border: 0;
+                       padding: 10px 12px; border-radius: var(--raio-p); cursor: pointer; color: var(--suave); font-weight: 500; text-align: left; white-space: nowrap; }
+  .lateral .alternar:hover { background: var(--sup-2); color: var(--texto); }
+  .lateral .alternar + .conta { margin-top: 0; }
+  .lateral nav button, .lateral .conta button, .marca { white-space: nowrap; }
+  .lateral { overflow: hidden; }
+
+  /* Menu compactado: só ícones */
+  .casca.compacta { grid-template-columns: 76px 1fr; }
+  .casca.compacta .lateral { padding: 20px 12px; }
+  .casca.compacta .marca { padding: 4px 8px 20px; }
+  .casca.compacta .lateral nav button, .casca.compacta .lateral .alternar { justify-content: center; padding: 10px; }
+  .casca.compacta .lateral .conta { padding: 14px 0 0; align-items: center; }
+  .casca.compacta .lateral .conta button { align-self: center; padding: 8px 10px; }
+  .casca.compacta .rot, .casca.compacta .marca .nome, .casca.compacta .conta .email {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
 
   .area { min-width: 0; display: flex; flex-direction: column; }
   main { width: 100%; max-width: 1180px; padding: 28px 32px; flex: 1; }
@@ -729,15 +746,19 @@ const ICONES = {
   sair: '<path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="m10 16-4-4 4-4"/><path d="M6 12h10"/>',
   mais: '<path d="M12 5v14M5 12h14"/>',
   voltar: '<path d="m15 6-6 6 6 6"/>',
+  compactar: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m16 10-2 2 2 2"/>',
+  ampliar: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m14 10 2 2-2 2"/>',
   busca: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   relogio: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   calendario: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>',
   local: '<path d="M12 21s7-6.2 7-11.5a7 7 0 0 0-14 0C5 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/>',
 };
 function ic(nome) { return `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${ICONES[nome]}</svg>`; }
-function marcaHtml() { return `<div class="marca"><span class="selo">${ic('marca')}</span><span>Empresta <span class="ai">Aí</span></span></div>`; }
+function marcaHtml() { return `<div class="marca"><span class="selo">${ic('marca')}</span><span class="nome">Empresta <span class="ai">Aí</span></span></div>`; }
 
-const ui = { view: 'inicio', id: null, filtroCategoria: '', buscaNome: '', filtros: null, aviso: null, erroAuth: [] };
+const CHAVE_MENU = 'emprestaAi.menuCompacto';
+function lerMenuCompacto() { try { return localStorage.getItem(CHAVE_MENU) === '1'; } catch (e) { return false; } }
+const ui = { view: 'inicio', id: null, filtroCategoria: '', buscaNome: '', filtros: null, aviso: null, erroAuth: [], menuCompacto: lerMenuCompacto() };
 function normalizarBusca(t) { return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim(); }
 function ir(view, id = null) {
   ui.view = view; ui.id = id; ui.aviso = null; ui.erroAuth = [];
@@ -755,7 +776,7 @@ function render() {
     return;
   }
   if (!['inicio', 'objetos', 'objeto', 'contatos', 'emprestimos', 'emprestimo', 'config'].includes(ui.view)) ui.view = 'inicio';
-  app.innerHTML = `<div class="casca">${menuLateral()}<div class="area"><main>` +
+  app.innerHTML = `<div class="casca${ui.menuCompacto ? ' compacta' : ''}">${menuLateral()}<div class="area"><main>` +
     (ui.aviso ? `<div class="aviso ${ui.aviso.tipo}" role="alert">${esc(ui.aviso.msg)}</div>` : '') +
     conteudo() + `</main>${rodapeHtml()}</div></div>`;
 }
@@ -774,12 +795,17 @@ function renderBarra() { // Controle de data simulada (requisito 4 do protótipo
 }
 
 function menuLateral() {
-  const item = (view, rotulo) => `<button type="button" data-acao="ir" data-view="${view}"${ui.view === view || (ui.view === view.slice(0, -1)) ? ' aria-current="page"' : ''}>${ic(view)}${rotulo}</button>`;
-  return `<aside class="lateral">
+  // Menu lateral ampliado ou compactado (preferência visual, sem regra de negócio).
+  const c = ui.menuCompacto;
+  const dica = rotulo => c ? ` title="${rotulo}"` : '';
+  const item = (view, rotulo) => `<button type="button" data-acao="ir" data-view="${view}"${dica(rotulo)}${ui.view === view || (ui.view === view.slice(0, -1)) ? ' aria-current="page"' : ''}>${ic(view)}<span class="rot">${rotulo}</span></button>`;
+  const rotAlternar = c ? 'Ampliar menu' : 'Compactar menu';
+  return `<aside class="lateral" id="menu-lateral">
     ${marcaHtml()}
     <nav aria-label="Principal">${item('inicio', 'Início')}${item('objetos', 'Objetos')}${item('contatos', 'Contatos')}${item('emprestimos', 'Empréstimos')}${item('config', 'Configurações')}</nav>
+    <button type="button" class="alternar" id="alternar-menu" data-acao="alternar-menu" aria-controls="menu-lateral" aria-expanded="${!c}"${dica(rotAlternar)}>${ic(c ? 'ampliar' : 'compactar')}<span class="rot">${rotAlternar}</span></button>
     <div class="conta"><span class="email">${esc(contaAtual().email)}</span>
-      <button type="button" class="sec" data-acao="sair">${ic('sair')}Sair</button></div>
+      <button type="button" class="sec" data-acao="sair"${dica('Sair')}>${ic('sair')}<span class="rot">Sair</span></button></div>
   </aside>`;
 }
 
@@ -1299,6 +1325,11 @@ function fecharModal() {
 const acoes = {
   'ir': ds => ir(ds.view, ds.id || null),
   'ir-auth': ds => { ui.view = ds.view; ui.erroAuth = []; render(); },
+  'alternar-menu': () => {
+    ui.menuCompacto = !ui.menuCompacto;
+    try { localStorage.setItem(CHAVE_MENU, ui.menuCompacto ? '1' : '0'); } catch (e) { /* só vale nesta visita */ }
+    render(); document.getElementById('alternar-menu').focus();
+  },
   'sair': () => { db.sessao = null; salvar(); ui.view = 'entrar'; ui.erroAuth = []; render(); }, // HU01 — sair
   'sim-mais': ds => { db.offsetDias = (db.offsetDias || 0) + Number(ds.dias); salvar(); render(); },
   'sim-hoje': () => { db.offsetDias = 0; salvar(); render(); },
